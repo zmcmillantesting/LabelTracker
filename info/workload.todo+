@@ -1,0 +1,44 @@
+Label Tracking App V1.0.0:
+
+    Documentation:
+        ☐ finish/update readme file @0.5h
+        ☐ update word doc @0.5h
+
+    Layout:
+        ✔ Applicaiton Layout @done(25-09-26 12:27)
+        ☐ P Drive File layouts @1h
+        ☐ __init__.py files @1h
+        ☐ requirements.txt @0.5h
+
+    Utils setup:
+        ✘ config.py @0.5h @started(25-09-26 16:09) @cancelled(25-09-26 16:15) @wasted(6m18s) @today 
+            no need for a config file at this time, create one in the future if needed
+        ✔ logger.py @1h @done(25-09-26 13:23)
+            pulled complete file from TroubleShootingNotes project
+        ☐ validators @1h
+
+    Managers: 
+        ✔ db_manager @2h @started(25-09-26 13:24) @done(25-09-26 14:38) @lasted(1h14m15s) 
+        ✔ XLSX_manager @2h @started(25-09-26 14:40) @done(25-09-26 15:38) @lasted(58m42s) TODO: add timestamp that links to if fixed explanation column @high
+        ☐ update db_manager after creating UI @0.5h @critical 
+        ☐ update xlsx_manager after creating UI @0.5h @critical
+
+    GUI Skeleton:
+        ☐ app.py @2h
+        may pull styles and widgets from Troubleshooting notes 
+        ☐ styles.py @0.5h @high
+        ☐ widgets.py @0.5h @high
+        ☐ windows.py @2h
+
+    Testing:
+        ✔ test_db.py @0.5h @done(25-09-26 14:38)
+        ✔ test_xlsx.py @0.5h @started(25-09-26 15:01) @done(25-09-26 15:39) @lasted(38m44s)
+        ☐ test_ui.py @1h
+        ✔ test_logger @1h @started(25-09-26 15:59) @done(25-09-26 16:09) @lasted(10m6s)
+
+    Implementation:
+        ☐ debug/QA @3h
+        ☐ review @1h
+
+
+
