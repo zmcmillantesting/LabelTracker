@@ -1,0 +1,23 @@
+2025-09-29 20:24:06,615 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20250929_202406.log
+2025-09-29 20:24:06,615 - utils.logger - INFO - Starting Label Tracker Application...
+2025-09-29 20:24:06,628 - utils.logger - INFO - Database manager initialized
+2025-09-29 20:24:06,628 - utils.logger - INFO - XLSX manager initialized
+2025-09-29 20:24:06,644 - GUI.app - INFO - AppController initialized with backend managers
+2025-09-29 20:24:07,034 - GUI.app - INFO - Login window displayed
+2025-09-29 20:24:07,034 - utils.logger - INFO - Application controller started
+2025-09-29 20:24:07,034 - GUI.app - INFO - Starting application event loop
+2025-09-29 20:24:11,337 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-09-29 20:24:11,343 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-09-29 20:24:11,433 - GUI.admin_window - INFO - Company tree refreshed
+2025-09-29 20:24:11,436 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-09-29 20:24:11,439 - GUI.admin_window - INFO - Loaded 2 users
+2025-09-29 20:24:11,462 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-09-29 20:24:11,487 - GUI.app - INFO - Admin window displayed for admin
+2025-09-29 20:24:16,214 - GUI.admin_window - INFO - Loaded 3 orders
+2025-09-29 20:25:04,183 - GUI.admin_window - INFO - Company added: EMS TEST COMPANY (cust_id=EMS)
+2025-09-29 20:25:05,613 - GUI.admin_window - INFO - Company tree refreshed
+2025-09-29 20:25:05,616 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-09-29 20:25:14,748 - GUI.admin_window - INFO - Board added: TEST BOARD
+2025-09-29 20:25:15,645 - GUI.admin_window - INFO - Company tree refreshed
+2025-09-29 20:25:15,650 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-09-29 20:25:20,380 - GUI.admin_window - INFO - Loaded 3 orders

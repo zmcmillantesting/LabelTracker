@@ -1,0 +1,31 @@
+2025-09-29 20:52:51,337 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20250929_205251.log
+2025-09-29 20:52:51,337 - utils.logger - INFO - Starting Label Tracker Application...
+2025-09-29 20:52:51,350 - utils.logger - INFO - Database manager initialized
+2025-09-29 20:52:51,350 - utils.logger - INFO - XLSX manager initialized
+2025-09-29 20:52:51,365 - GUI.app - INFO - AppController initialized with backend managers
+2025-09-29 20:52:51,741 - GUI.app - INFO - Login window displayed
+2025-09-29 20:52:51,741 - utils.logger - INFO - Application controller started
+2025-09-29 20:52:51,742 - GUI.app - INFO - Starting application event loop
+2025-09-29 20:52:55,476 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-09-29 20:52:55,482 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-09-29 20:52:55,551 - GUI.app - INFO - User window displayed for test
+2025-09-29 20:53:00,729 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-09-29 20:53:00,732 - GUI.standard_user_window - INFO - Order 4321.1 loaded successfully
+2025-09-29 20:53:06,957 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX-4321.1-00003
+2025-09-29 20:53:06,958 - GUI.standard_user_window - INFO - SN QTX-4321.1-00003 submitted: Pass
+2025-09-29 20:53:06,977 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-09-29 20:53:10,634 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX-4321.1-00006
+2025-09-29 20:53:10,635 - GUI.standard_user_window - INFO - SN QTX-4321.1-00006 submitted: Pass
+2025-09-29 20:53:10,651 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-09-29 20:53:12,756 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX-4321.1-00007
+2025-09-29 20:53:12,757 - GUI.standard_user_window - INFO - SN QTX-4321.1-00007 submitted: Pass
+2025-09-29 20:53:12,773 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-09-29 20:53:25,642 - GUI.app - INFO - Login window displayed
+2025-09-29 20:53:31,383 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-09-29 20:53:31,389 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-09-29 20:53:31,455 - GUI.admin_window - INFO - Company tree refreshed
+2025-09-29 20:53:31,458 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-09-29 20:53:31,460 - GUI.admin_window - INFO - Loaded 2 users
+2025-09-29 20:53:31,470 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-09-29 20:53:31,489 - GUI.app - INFO - Admin window displayed for admin
+2025-09-29 20:53:35,356 - GUI.admin_window - INFO - Loaded 4 orders

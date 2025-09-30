@@ -1,0 +1,29 @@
+2025-09-29 20:26:27,696 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20250929_202627.log
+2025-09-29 20:26:27,697 - utils.logger - INFO - Starting Label Tracker Application...
+2025-09-29 20:26:27,711 - utils.logger - INFO - Database manager initialized
+2025-09-29 20:26:27,711 - utils.logger - INFO - XLSX manager initialized
+2025-09-29 20:26:27,726 - GUI.app - INFO - AppController initialized with backend managers
+2025-09-29 20:26:28,097 - GUI.app - INFO - Login window displayed
+2025-09-29 20:26:28,097 - utils.logger - INFO - Application controller started
+2025-09-29 20:26:28,097 - GUI.app - INFO - Starting application event loop
+2025-09-29 20:26:31,648 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-09-29 20:26:31,654 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-09-29 20:26:31,753 - GUI.admin_window - INFO - Company tree refreshed
+2025-09-29 20:26:31,758 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-09-29 20:26:31,762 - GUI.admin_window - INFO - Loaded 2 users
+2025-09-29 20:26:31,785 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-09-29 20:26:31,809 - GUI.app - INFO - Admin window displayed for admin
+2025-09-29 20:26:48,160 - GUI.admin_window - INFO - Loaded 3 orders
+2025-09-29 20:26:48,193 - GUI.admin_window - INFO - Company tree refreshed
+2025-09-29 20:26:49,001 - GUI.admin_window - INFO - Loaded 3 orders
+2025-09-29 20:26:51,576 - GUI.admin_window - INFO - Loaded 3 orders
+2025-09-29 20:27:19,887 - GUI.admin_window - INFO - User added: john doe (user)
+2025-09-29 20:27:20,890 - GUI.admin_window - INFO - Loaded 3 users
+2025-09-29 20:27:28,738 - GUI.admin_window - INFO - Password updated for user: admin
+2025-09-29 20:27:41,688 - GUI.admin_window - INFO - User deleted: john doe
+2025-09-29 20:27:42,547 - GUI.admin_window - INFO - Loaded 2 users
+2025-09-29 20:27:43,776 - GUI.admin_window - INFO - Loaded 3 orders
+2025-09-29 20:28:05,169 - GUI.admin_window - INFO - Board archived: SRU1
+2025-09-29 20:28:06,039 - GUI.admin_window - INFO - Company tree refreshed
+2025-09-29 20:28:06,042 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-09-29 20:28:08,962 - GUI.admin_window - INFO - Loaded 3 orders

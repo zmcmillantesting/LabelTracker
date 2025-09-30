@@ -55,7 +55,8 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS companies (
                     company_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     company_name TEXT NOT NULL UNIQUE,
-                    client_path TEXT NOT NULL
+                    client_path TEXT NOT NULL,
+                    cust_id TEXT DEFAULT NULL
                 )""")
 
                 query.execute("""
@@ -82,6 +83,37 @@ class DatabaseManager:
                 )""")
 
                 conn.commit()
+
+                # Ensure 'archived' column on boards exists (0/1)
+                query.execute("PRAGMA table_info(boards)")
+                cols = [r[1] for r in query.fetchall()]
+                if 'archived' not in cols:
+                    query.execute("ALTER TABLE boards ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+                    conn.commit()
+
+                # Ensure 'cust_id' column exists on companies (nullable text)
+                query.execute("PRAGMA table_info(companies)")
+                comp_cols = [r[1] for r in query.fetchall()]
+                if 'cust_id' not in comp_cols:
+                    query.execute("ALTER TABLE companies ADD COLUMN cust_id TEXT DEFAULT NULL")
+                    conn.commit()
+
+                # Ensure 'archived' column on companies exists (0/1)
+                if 'archived' not in comp_cols:
+                    query.execute("ALTER TABLE companies ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+                    conn.commit()
+
+                # Ensure at least one admin user exists (seed default admin)
+                query.execute("SELECT user_id FROM users WHERE username=?", ("admin",))
+                if not query.fetchone():
+                    import hashlib
+                    pw_hash = hashlib.sha256("admin123".encode()).hexdigest()
+                    query.execute(
+                        "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                        ("admin", pw_hash, "admin"),
+                    )
+                    conn.commit()
+                    logger.info("Seeded default admin user 'admin'")
 
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
@@ -117,13 +149,13 @@ class DatabaseManager:
             raise
 
     # ---------------- Company methods ----------------
-    def add_company(self, company_name, client_path):
+    def add_company(self, company_name, client_path, cust_id=None):
         try:
             with self.get_connection() as conn:
                 query = conn.cursor()
                 query.execute(
-                    "INSERT INTO companies (company_name, client_path) VALUES (?, ?)",
-                    (company_name, client_path),
+                    "INSERT INTO companies (company_name, client_path, cust_id) VALUES (?, ?, ?)",
+                    (company_name, client_path, cust_id),
                 )
                 conn.commit()
         except Exception as e:
@@ -131,13 +163,61 @@ class DatabaseManager:
             raise
 
     def get_companies(self):
+        # Backwards compatible: by default exclude archived companies from normal lists
         try:
             with self.get_connection() as conn:
                 query = conn.cursor()
-                query.execute("SELECT company_id, company_name, client_path FROM companies")
+                query.execute("PRAGMA table_info(companies)")
+                cols = [r[1] for r in query.fetchall()]
+                includes_archived = False
+                # If caller wants archived included they should use get_companies(include_archived=True)
+                # Default behaviour: only active companies
+                query_str = "SELECT company_id, company_name, client_path, cust_id FROM companies WHERE archived=0" if 'archived' in cols else "SELECT company_id, company_name, client_path, cust_id FROM companies"
+                query.execute(query_str)
                 return query.fetchall()
         except Exception as e:
             logger.error(f"Failed to get companies: {e}")
+            raise
+
+    def get_companies_all(self, include_archived=False):
+        """Return companies. If include_archived=True return all companies including archived ones."""
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                if include_archived:
+                    query.execute("SELECT company_id, company_name, client_path, cust_id, archived FROM companies")
+                else:
+                    # return same 4-column shape for compatibility
+                    query.execute("SELECT company_id, company_name, client_path, cust_id FROM companies WHERE archived=0")
+                return query.fetchall()
+        except Exception as e:
+            logger.error(f"Failed to get companies (all): {e}")
+            raise
+
+    def archive_company(self, company_id):
+        """Archive a company and its boards (mark archived=1)."""
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("UPDATE companies SET archived=1 WHERE company_id=?", (company_id,))
+                # also archive boards belonging to the company
+                query.execute("UPDATE boards SET archived=1 WHERE company_id=?", (company_id,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to archive company: {e}")
+            raise
+
+    def unarchive_company(self, company_id):
+        """Unarchive a company and optionally unarchive its boards."""
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("UPDATE companies SET archived=0 WHERE company_id=?", (company_id,))
+                # also unarchive boards that were archived with the company
+                query.execute("UPDATE boards SET archived=0 WHERE company_id=?", (company_id,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to unarchive company: {e}")
             raise
 
     # ---------------- Board methods ----------------
@@ -159,7 +239,7 @@ class DatabaseManager:
             with self.get_connection() as conn:
                 query = conn.cursor()
                 query.execute(
-                    "SELECT board_id, board_name FROM boards WHERE company_id=?",
+                    "SELECT board_id, board_name, archived FROM boards WHERE company_id=?",
                     (company_id,),
                 )
                 return query.fetchall()
@@ -191,6 +271,113 @@ class DatabaseManager:
                 conn.commit()
         except Exception as e:
             logger.error(f"Failed to update order status: {e}")
+            raise
+
+    def archive_order(self, order_id):
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("UPDATE orders SET status='Archived' WHERE order_id=?", (order_id,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to archive order: {e}")
+            raise
+
+    def unarchive_order(self, order_id):
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("UPDATE orders SET status='Active' WHERE order_id=?", (order_id,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to unarchive order: {e}")
+            raise
+
+    def get_archived_orders(self):
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("SELECT * FROM orders WHERE status='Archived'")
+                return query.fetchall()
+        except Exception as e:
+            logger.error(f"Failed to get archived orders: {e}")
+            raise
+
+    def archive_board(self, board_id):
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("UPDATE boards SET archived=1 WHERE board_id=?", (board_id,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to archive board: {e}")
+            raise
+
+    def unarchive_board(self, board_id):
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("UPDATE boards SET archived=0 WHERE board_id=?", (board_id,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to unarchive board: {e}")
+            raise
+
+    def get_boards(self, company_id=None, include_archived=False):
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                if company_id:
+                    if include_archived:
+                        query.execute("SELECT board_id, board_name, archived FROM boards WHERE company_id=?", (company_id,))
+                    else:
+                        query.execute("SELECT board_id, board_name, archived FROM boards WHERE company_id=? AND archived=0", (company_id,))
+                else:
+                    if include_archived:
+                        query.execute("SELECT board_id, board_name, archived FROM boards")
+                    else:
+                        query.execute("SELECT board_id, board_name, archived FROM boards WHERE archived=0")
+                return query.fetchall()
+        except Exception as e:
+            logger.error(f"Failed to get boards: {e}")
+            raise
+
+    def delete_order_permanently(self, order_id):
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("DELETE FROM orders WHERE order_id=?", (order_id,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to permanently delete order: {e}")
+            raise
+
+    def delete_board_permanently(self, board_id):
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("DELETE FROM boards WHERE board_id=?", (board_id,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to permanently delete board: {e}")
+            raise
+
+    def delete_company_permanently(self, company_id):
+        """Permanently delete a company and all related boards and orders.
+        This does a cascading delete within a transaction to avoid FK issues.
+        """
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                # Delete orders referencing company
+                query.execute("DELETE FROM orders WHERE company_id=?", (company_id,))
+                # Delete boards
+                query.execute("DELETE FROM boards WHERE company_id=?", (company_id,))
+                # Finally delete company
+                query.execute("DELETE FROM companies WHERE company_id=?", (company_id,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to permanently delete company: {e}")
             raise
 
     def get_orders(self, company_id=None):

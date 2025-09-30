@@ -107,19 +107,11 @@ class TestXLSXManager(unittest.TestCase):
         self.assertIsNone(row_2_data[2])  # Board ID in column 3 (None since board_id=None)
         self.assertEqual(row_2_data[3], "CUSTID-ORDNO-00001")  # Serial Number in column 4
         
-        # pass/fail should be "Pass" or "Fail" based on the pass_fail boolean
-        expected_status = "Pass" if pass_fail else "Fail"
-        self.assertEqual(row_2_data[4], expected_status)  # pass/fail in column 5
-        
-        self.assertEqual(row_2_data[5], pass_fail_timestamp)  # Timestamp in column 6
-        
-        # Failure and fix explanations should match what we set
-        if pass_fail:
-            self.assertIsNone(row_2_data[6])  # No failure explanation if passed (None)
-            self.assertIsNone(row_2_data[7])  # No fix explanation if passed (None)
-        else:
-            self.assertEqual(row_2_data[6], failure_explanation)  # Failure explanation
-            self.assertEqual(row_2_data[7], fix_explanation)  # Fix explanation
+        # Newly-created order files should start with status 'Pending' and no timestamp/explanations
+        self.assertEqual(row_2_data[4], "Pending")  # pass/fail in column 5
+        self.assertIsNone(row_2_data[5])  # Timestamp should be empty for new files
+        self.assertIsNone(row_2_data[6])  # No failure explanation for new files
+        self.assertIsNone(row_2_data[7])  # No fix explanation for new files
 
         # 5. Orders table in DB should have an entry
         orders = self.db.get_orders(self.company_id)
@@ -248,8 +240,8 @@ class TestXLSXManager(unittest.TestCase):
         wb_pass = load_workbook(file_path_pass)
         ws_pass = wb_pass.active
         
-        # For passing items, status should be "Pass" and explanations should be None
-        self.assertEqual(ws_pass.cell(row=2, column=5).value, "Pass")
+        # Newly-created files always start as Pending regardless of pass_fail flag
+        self.assertEqual(ws_pass.cell(row=2, column=5).value, "Pending")
         self.assertIsNone(ws_pass.cell(row=2, column=7).value)  # failure explanation None
         self.assertIsNone(ws_pass.cell(row=2, column=8).value)  # fix explanation None
         
@@ -273,10 +265,10 @@ class TestXLSXManager(unittest.TestCase):
         wb_fail = load_workbook(file_path_fail)
         ws_fail = wb_fail.active
         
-        # For failing items, status should be "Fail" and explanations should be filled
-        self.assertEqual(ws_fail.cell(row=2, column=5).value, "Fail")
-        self.assertEqual(ws_fail.cell(row=2, column=7).value, failure_explanation)
-        self.assertEqual(ws_fail.cell(row=2, column=8).value, fix_explanation)
+        # Newly-created files always start as Pending regardless of pass_fail flag
+        self.assertEqual(ws_fail.cell(row=2, column=5).value, "Pending")
+        self.assertIsNone(ws_fail.cell(row=2, column=7).value)
+        self.assertIsNone(ws_fail.cell(row=2, column=8).value)
 
 
 if __name__ == "__main__":

@@ -1,368 +1,1670 @@
-# admin_window.py
+# admin_window.py - Complete Sidebar Layout Version with styles.py integration
 
+import logging
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QComboBox, QTableWidget, QTableWidgetItem, QAbstractItemView, QMessageBox,
-    QTreeWidget, QTreeWidgetItem, QMenu, QInputDialog, QTabWidget
+    QListWidget, QDialog, QDialogButtonBox, QTreeWidget, QTreeWidgetItem, 
+    QMenu, QInputDialog, QFileDialog, QStackedWidget, QScrollArea, QFrame,
+    QSizePolicy, QHeaderView
 )
 from PyQt5.QtCore import Qt
-import styles
+from PyQt5.QtGui import QFont
+from datetime import datetime
+import os
+import GUI.styles as styles
 
+logger = logging.getLogger(__name__)
+
+# How many rows to try to show by default in split-screen
+try:
+    DEFAULT_VISIBLE_ROWS = int(os.environ.get('LT_VISIBLE_ROWS', '20'))
+except Exception:
+    DEFAULT_VISIBLE_ROWS = 15
+
+
+# ==================== HELPER CLASSES ====================
+
+class SidebarButton(QPushButton):
+    """Custom sidebar navigation button"""
+    def __init__(self, icon, text, parent=None):
+        super().__init__(f"{icon}  {text}", parent)
+        self.setCheckable(True)
+        self.setMinimumHeight(50)
+        self.setStyleSheet(styles.SIDEBAR_BUTTON_STYLE)
+
+
+class ContentPanel(QWidget):
+    """Base class for content panels with max-width container"""
+    def __init__(self, title, parent=None):
+        super().__init__(parent)
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
+        
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        
+        center_layout = QHBoxLayout()
+        center_layout.addStretch()
+        
+        self.content_widget = QWidget()
+        self.content_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        content_outer = QVBoxLayout(self.content_widget)
+        content_outer.setContentsMargins(30, 30, 30, 30)
+
+        title_label = QLabel(title)
+        title_font = QFont("Segoe UI", 20, QFont.Bold)
+        title_label.setFont(title_font)
+        title_label.setStyleSheet("color: #64b5f6; margin-bottom: 20px;")
+        content_outer.addWidget(title_label)
+
+        self.content_layout = QVBoxLayout()
+        self.content_layout.setSpacing(20)
+        content_outer.addLayout(self.content_layout)
+        content_outer.addStretch()
+
+        center_layout.addWidget(self.content_widget, 1)
+        center_layout.addStretch()
+        
+        container_layout.addLayout(center_layout)
+        scroll.setWidget(container)
+        self.main_layout.addWidget(scroll)
+
+
+class BlockingOrdersDialog(QDialog):
+    """Dialog that lists orders referencing a board"""
+    def __init__(self, parent, orders):
+        super().__init__(parent)
+        self.setWindowTitle("Orders referencing board")
+        self.orders = orders
+
+        layout = QVBoxLayout()
+        msg = QLabel(f"The following order(s) reference this board ({len(orders)}):")
+        layout.addWidget(msg)
+
+        self.list_widget = QListWidget()
+        for order_number, file_path in orders:
+            display = f"{order_number} — {file_path}"
+            self.list_widget.addItem(display)
+        layout.addWidget(self.list_widget)
+
+        btn_box = QDialogButtonBox()
+        self.copy_btn = btn_box.addButton("Copy List", QDialogButtonBox.ActionRole)
+        self.open_btn = btn_box.addButton("Open Selected File", QDialogButtonBox.ActionRole)
+        self.close_btn = btn_box.addButton(QDialogButtonBox.Close)
+
+        self.copy_btn.clicked.connect(self.copy_list)
+        self.open_btn.clicked.connect(self.open_selected)
+        self.close_btn.clicked.connect(self.reject)
+
+        layout.addWidget(btn_box)
+        self.setLayout(layout)
+
+    def copy_list(self):
+        try:
+            from PyQt5.QtWidgets import QApplication
+            lines = [self.list_widget.item(i).text() for i in range(self.list_widget.count())]
+            QApplication.clipboard().setText("\n".join(lines))
+        except Exception:
+            pass
+
+    def open_selected(self):
+        sel = self.list_widget.currentItem()
+        if not sel:
+            return
+        text = sel.text()
+        parts = text.split(' — ', 1)
+        if len(parts) == 2:
+            file_path = parts[1]
+            try:
+                if os.path.exists(file_path):
+                    os.startfile(file_path)
+                else:
+                    QMessageBox.warning(self, "File Not Found", f"File not found:\n{file_path}")
+            except Exception as e:
+                QMessageBox.warning(self, "Open Failed", f"Could not open file:\n{e}")
+
+
+# ==================== MAIN ADMIN WINDOW ====================
 
 class AdminWindow(QWidget):
-    def __init__(self, username: str):
+    def __init__(self, username: str, user_id: int, db_manager, xlsx_manager, on_logout=None):
         super().__init__()
         self.username = username
+        self.user_id = user_id
+        self.db_manager = db_manager
+        self.xlsx_manager = xlsx_manager
+        self.on_logout = on_logout
+        
         self.setWindowTitle("Label Tracker - Admin")
-        self.setStyleSheet(styles.WINDOW_STYLE)
+        self.setMinimumSize(1200, 700)
+        
+        # Apply combined stylesheet from styles.py
+        self.setStyleSheet(styles.FULL_APP_STYLE)
 
-        # Store company → boards in memory
-        self.company_boards = {
-            "Example Corp A": ["Board Type A"],
-            "Example Corp B": ["Board Type B"]
-        }
-
+        logger.info(f"Admin window initialized for user: {username}")
         self.setup_ui()
+        self.load_initial_data()
 
     def setup_ui(self):
-        layout = QVBoxLayout()
-        welcome = QLabel(f"Welcome, Admin {self.username}")
-        layout.addWidget(welcome)
+        main_layout = QHBoxLayout(self)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Sidebar
+        sidebar = QWidget()
+        sidebar.setFixedWidth(280)
+        sidebar.setStyleSheet(styles.SIDEBAR_STYLE)
+        sidebar_layout = QVBoxLayout(sidebar)
+        sidebar_layout.setSpacing(5)
+        sidebar_layout.setContentsMargins(0, 20, 0, 20)
+        
+        # App title
+        title_label = QLabel("Label Tracker")
+        title_label.setStyleSheet("""
+            color: #64b5f6;
+            font-size: 18pt;
+            font-weight: bold;
+            padding: 20px;
+        """)
+        sidebar_layout.addWidget(title_label)
+        
+        # User info
+        user_label = QLabel(f"Admin: {self.username}")
+        user_label.setStyleSheet("color: #aaa; padding: 0 20px 20px 20px;")
+        sidebar_layout.addWidget(user_label)
+        
+        # Navigation buttons
+        self.nav_buttons = []
+        
+        self.btn_create_order = SidebarButton("📦", "Create Order", self)
+        self.btn_companies = SidebarButton("🏢", "Companies", self)
+        self.btn_boards = SidebarButton("⚡", "Part Numbers", self)
+        self.btn_awaiting = SidebarButton("⏳", "Awaiting Review", self)
+        self.btn_archive = SidebarButton("📂", "Archive", self)
+        self.btn_users = SidebarButton("👥", "Users", self)
+        
+        self.nav_buttons = [
+            self.btn_create_order, self.btn_companies, self.btn_boards,
+            self.btn_awaiting, self.btn_archive, self.btn_users
+        ]
+        
+        for btn in self.nav_buttons:
+            sidebar_layout.addWidget(btn)
+            btn.clicked.connect(self.on_nav_clicked)
+        
+        sidebar_layout.addStretch()
+        
+        # Logout button
+        self.logout_button = QPushButton("Logout")
+        self.logout_button.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
+        self.logout_button.clicked.connect(self.handle_logout)
+        sidebar_layout.addWidget(self.logout_button)
+        
+        # Content area
+        self.content_stack = QStackedWidget()
+        self.content_stack.setStyleSheet("background-color: #0f1419;")
+        
+        # Create panels
+        self.panel_create_order = self.build_create_order_panel()
+        self.panel_companies = self.build_companies_panel()
+        self.panel_boards = self.build_boards_panel()
+        self.panel_awaiting = self.build_awaiting_panel()
+        self.panel_archive = self.build_archive_panel()
+        self.panel_users = self.build_users_panel()
+        
+        self.content_stack.addWidget(self.panel_create_order)
+        self.content_stack.addWidget(self.panel_companies)
+        self.content_stack.addWidget(self.panel_boards)
+        self.content_stack.addWidget(self.panel_awaiting)
+        self.content_stack.addWidget(self.panel_archive)
+        self.content_stack.addWidget(self.panel_users)
+        
+        # Add to main layout
+        main_layout.addWidget(sidebar)
+        main_layout.addWidget(self.content_stack)
+        
+        # Set initial view
+        self.btn_create_order.setChecked(True)
+        self.content_stack.setCurrentIndex(0)
 
-        # Tabs
-        self.tabs = QTabWidget()
-        layout.addWidget(self.tabs)
+    def on_nav_clicked(self):
+        """Handle navigation button clicks"""
+        sender = self.sender()
+        
+        for btn in self.nav_buttons:
+            if btn != sender:
+                btn.setChecked(False)
+        
+        if sender == self.btn_create_order:
+            self.content_stack.setCurrentIndex(0)
+        elif sender == self.btn_companies:
+            self.content_stack.setCurrentIndex(1)
+        elif sender == self.btn_boards:
+            self.content_stack.setCurrentIndex(2)
+        elif sender == self.btn_awaiting:
+            self.content_stack.setCurrentIndex(3)
+            self.load_awaiting_confirmation_orders()
+        elif sender == self.btn_archive:
+            self.content_stack.setCurrentIndex(4)
+            self.load_all_orders()
+        elif sender == self.btn_users:
+            self.content_stack.setCurrentIndex(5)
 
-        # Tab 1: Orders
-        self.tabs.addTab(self.build_orders_tab(), "Orders")
+    # ==================== BUILD PANEL METHODS ====================
 
-        # Tab 2: Companies & Boards
-        self.tabs.addTab(self.build_companies_boards_tab(), "Companies & Boards")
+    def build_create_order_panel(self):
+        """Build the create order content panel"""
+        panel = ContentPanel("Create New Order")
 
-        # Tab 3: Archive
-        self.tabs.addTab(self.build_archive_tab(), "Archive")
+        # Form fields in two columns
+        form_outer = QHBoxLayout()
+        left_col = QVBoxLayout()
+        left_col.setSpacing(14)
+        right_col = QVBoxLayout()
+        right_col.setSpacing(14)
 
-        # Tab 4: Users
-        self.tabs.addTab(self.build_users_tab(), "Users")
-
-        self.setLayout(layout)
-        self.refresh_company_tree()
-        self.refresh_dropdowns()
-
-    # --- Orders Tab ---
-    def build_orders_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-
-        layout.addWidget(QLabel("Create New Order"))
-
-        order_layout = QHBoxLayout()
+        # Left column
+        left_col.addWidget(QLabel("Company"))
         self.company_dropdown = QComboBox()
-        self.company_dropdown.addItem("Select Company")
+        self.company_dropdown.addItem("Select company...", None)
+        self.company_dropdown.currentIndexChanged.connect(self.on_company_selected)
+        self.company_dropdown.setMinimumWidth(240)
+        left_col.addWidget(self.company_dropdown)
 
+        left_col.addWidget(QLabel("Order Number"))
+        self.order_number_input = QLineEdit()
+        self.order_number_input.setPlaceholderText("Enter order number...")
+        self.order_number_input.returnPressed.connect(self.create_order)
+        left_col.addWidget(self.order_number_input)
+
+        left_col.addWidget(QLabel("Output Directory"))
+        self.output_path_input = QLineEdit()
+        self.output_path_input.setPlaceholderText("Optional: defaults to company path")
+        left_col.addWidget(self.output_path_input)
+
+        # Right column
+        right_col.addWidget(QLabel("Part Number"))
         self.board_dropdown = QComboBox()
-        self.board_dropdown.addItem("Select Board")
+        self.board_dropdown.addItem("Select part...", None)
+        self.board_dropdown.setMinimumWidth(240)
+        right_col.addWidget(self.board_dropdown)
 
+        right_col.addWidget(QLabel("Total Boards"))
         self.total_boards_input = QLineEdit()
-        self.total_boards_input.setPlaceholderText("Enter total boards")
+        self.total_boards_input.setPlaceholderText("100")
         self.total_boards_input.returnPressed.connect(self.create_order)
+        right_col.addWidget(self.total_boards_input)
+
+        right_col.addWidget(QLabel("Customer Code"))
+        self.cust_code_input = QLineEdit()
+        self.cust_code_input.setPlaceholderText("e.g. QTX")
+        self.cust_code_input.returnPressed.connect(self.create_order)
+        right_col.addWidget(self.cust_code_input)
+
+        self.browse_output_button = QPushButton("Browse")
+        self.browse_output_button.clicked.connect(self.browse_output_path)
+        self.browse_output_button.setStyleSheet(styles.BUTTON_LINK_STYLE)
+        right_col.addWidget(self.browse_output_button)
+
+        left_widget = QWidget()
+        left_widget.setLayout(left_col)
+        left_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        left_widget.setMinimumWidth(420)
+
+        right_widget = QWidget()
+        right_widget.setLayout(right_col)
+        right_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        right_widget.setMinimumWidth(420)
+
+        form_outer.addWidget(left_widget)
+        form_outer.addSpacing(30)
+        form_outer.addWidget(right_widget)
+
+        inputs = (self.company_dropdown, self.board_dropdown, self.order_number_input,
+                  self.total_boards_input, self.cust_code_input, self.output_path_input)
+        for w in inputs:
+            try:
+                w.setMinimumHeight(48)
+                w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+                w.setMinimumWidth(360)
+            except Exception:
+                pass
+
+        panel.content_layout.addLayout(form_outer)
+        
+        # Action buttons
+        btn_row = QHBoxLayout()
+        self.preview_button = QPushButton("Preview")
+        self.preview_button.clicked.connect(self.preview_order)
+        self.preview_button.setStyleSheet(styles.BUTTON_LINK_STYLE)
+        btn_row.addWidget(self.preview_button)
 
         self.create_order_button = QPushButton("Create Order")
-        self.create_order_button.setStyleSheet(styles.BUTTON_STYLE)
         self.create_order_button.clicked.connect(self.create_order)
+        self.create_order_button.setStyleSheet(styles.BUTTON_LINK_STYLE)
+        btn_row.addWidget(self.create_order_button)
+        btn_row.addStretch()
 
-        order_layout.addWidget(self.company_dropdown)
-        order_layout.addWidget(self.board_dropdown)
-        order_layout.addWidget(self.total_boards_input)
-        order_layout.addWidget(self.create_order_button)
-        layout.addLayout(order_layout)
+        panel.content_layout.addLayout(btn_row)
+        
+        # Preview table
+        self.preview_label = QLabel("Preview (first 50 rows)")
+        self.preview_label.setVisible(False)
+        panel.content_layout.addWidget(self.preview_label)
+        
+        self.preview_table = QTableWidget()
+        self.preview_table.setColumnCount(8)
+        self.preview_table.setHorizontalHeaderLabels([
+            "User ID", "Company ID", "Board ID", "Serial Number",
+            "Pass/Fail", "Timestamp", "Fail Explanation", "Fix Explanation"
+        ])
+        self.preview_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.preview_table.setVisible(False)
+        try:
+            self.preview_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.preview_table.horizontalHeader().setStretchLastSection(True)
+        except Exception:
+            pass
+        self.preview_table.setWordWrap(True)
+        self.preview_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.preview_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
+        panel.content_layout.addWidget(self.preview_table)
+        
+        panel.content_layout.addStretch()
+        return panel
 
-        return tab
-
-    # --- Companies & Boards Tab ---
-    def build_companies_boards_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-
-        # Add company
-        layout.addWidget(QLabel("Create New Company"))
-        company_layout = QHBoxLayout()
+    def build_companies_panel(self):
+        """Build companies management panel"""
+        panel = ContentPanel("Manage Companies")
+        
+        add_layout = QHBoxLayout()
         self.new_company_input = QLineEdit()
-        self.new_company_input.setPlaceholderText("Enter new company name")
+        self.new_company_input.setPlaceholderText("Company name")
         self.new_company_input.returnPressed.connect(self.add_company)
-        self.add_company_button = QPushButton("Add Company")
-        self.add_company_button.setStyleSheet(styles.BUTTON_STYLE)
-        self.add_company_button.clicked.connect(self.add_company)
-        company_layout.addWidget(self.new_company_input)
-        company_layout.addWidget(self.add_company_button)
-        layout.addLayout(company_layout)
-
-        # Add board
-        layout.addWidget(QLabel("Create New Board"))
-        board_layout = QHBoxLayout()
-        self.company_for_board_dropdown = QComboBox()
-        self.company_for_board_dropdown.addItem("Select Company")
-
-        self.new_board_input = QLineEdit()
-        self.new_board_input.setPlaceholderText("Enter new board name/ID")
-        self.new_board_input.returnPressed.connect(self.add_board)
-
-        self.add_board_button = QPushButton("Add Board")
-        self.add_board_button.setStyleSheet(styles.BUTTON_STYLE)
-        self.add_board_button.clicked.connect(self.add_board)
-
-        board_layout.addWidget(self.company_for_board_dropdown)
-        board_layout.addWidget(self.new_board_input)
-        board_layout.addWidget(self.add_board_button)
-        layout.addLayout(board_layout)
-
-        # Company → Board tree
-        layout.addWidget(QLabel("Company & Board List"))
+        add_layout.addWidget(self.new_company_input)
+        
+        self.new_company_cust_input = QLineEdit()
+        self.new_company_cust_input.setPlaceholderText("Customer Code (e.g. QTX)")
+        self.new_company_cust_input.returnPressed.connect(self.add_company)
+        add_layout.addWidget(self.new_company_cust_input)
+        
+        add_btn = QPushButton("Add Company")
+        add_btn.clicked.connect(self.add_company)
+        add_btn.setStyleSheet(styles.BUTTON_LINK_STYLE)
+        add_layout.addWidget(add_btn)
+        
+        panel.content_layout.addLayout(add_layout)
+        
+        self.show_archived_checkbox = QPushButton("Show Archived Companies")
+        self.show_archived_checkbox.setCheckable(True)
+        self.show_archived_checkbox.toggled.connect(self.on_toggle_show_archived)
+        self.show_archived_checkbox.setStyleSheet(styles.BUTTON_STYLE)
+        panel.content_layout.addWidget(self.show_archived_checkbox)
+        
         self.company_tree = QTreeWidget()
-        self.company_tree.setHeaderLabels(["Company", "Boards"])
+        self.company_tree.setHeaderLabels(["Company", "Orders & Boards"])
         self.company_tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.company_tree.customContextMenuRequested.connect(self.open_context_menu)
-        layout.addWidget(self.company_tree)
+        panel.content_layout.addWidget(self.company_tree)
+        
+        return panel
 
-        return tab
+    def build_boards_panel(self):
+        """Build boards management panel"""
+        panel = ContentPanel("Manage Part Numbers")
+        
+        add_layout = QHBoxLayout()
+        self.company_for_board_dropdown = QComboBox()
+        self.company_for_board_dropdown.addItem("Select Company", None)
+        add_layout.addWidget(self.company_for_board_dropdown)
+        
+        self.new_board_input = QLineEdit()
+        self.new_board_input.setPlaceholderText("Part number / board name")
+        self.new_board_input.returnPressed.connect(self.add_board)
+        add_layout.addWidget(self.new_board_input)
+        
+        add_btn = QPushButton("Add Part Number")
+        add_btn.clicked.connect(self.add_board)
+        add_btn.setStyleSheet(styles.BUTTON_LINK_STYLE)
+        add_layout.addWidget(add_btn)
+        
+        panel.content_layout.addLayout(add_layout)
+        panel.content_layout.addStretch()
+        
+        return panel
 
-    # --- Archive Tab ---
-    def build_archive_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
+    def build_awaiting_panel(self):
+        """Build awaiting confirmation panel"""
+        panel = ContentPanel("Awaiting Confirmation")
+        
+        info = QLabel("Orders ready for admin review (all boards tested)")
+        info.setStyleSheet("color: #aaa; margin-bottom: 10px;")
+        panel.content_layout.addWidget(info)
+        
+        self.await_table = QTableWidget()
+        self.await_table.setColumnCount(6)
+        self.await_table.setHorizontalHeaderLabels([
+            "Order ID", "Order Number", "Company", "Board", "File Path", "Status"
+        ])
+        self.await_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.await_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.await_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        try:
+            self.await_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.await_table.horizontalHeader().setStretchLastSection(True)
+        except Exception:
+            pass
+        self.await_table.setWordWrap(True)
+        self.await_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.await_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
+        panel.content_layout.addWidget(self.await_table)
+        
+        btn_row = QHBoxLayout()
+        self.view_await_btn = QPushButton("View File")
+        self.view_await_btn.clicked.connect(self.view_selected_awaiting_file)
+        self.view_await_btn.setStyleSheet(styles.BUTTON_STYLE)
+        btn_row.addWidget(self.view_await_btn)
+        
+        self.confirm_archive_btn = QPushButton("Confirm & Archive")
+        self.confirm_archive_btn.clicked.connect(self.confirm_and_archive_selected)
+        self.confirm_archive_btn.setStyleSheet(styles.BUTTON_STYLE)
+        btn_row.addWidget(self.confirm_archive_btn)
+        btn_row.addStretch()
+        
+        panel.content_layout.addLayout(btn_row)
+        
+        return panel
 
-        # Search bar
+    def build_archive_panel(self):
+        """Build archive panel"""
+        panel = ContentPanel("Archive")
+        
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search archived orders...")
+        self.search_input.setPlaceholderText("Search orders...")
         self.search_input.returnPressed.connect(self.search_archived_orders)
-        self.search_button = QPushButton("Search")
-        self.search_button.setStyleSheet(styles.BUTTON_STYLE)
-        self.search_button.clicked.connect(self.search_archived_orders)
         search_layout.addWidget(self.search_input)
-        search_layout.addWidget(self.search_button)
-        layout.addLayout(search_layout)
-
-        # Archived orders table
+        
+        search_btn = QPushButton("Search")
+        search_btn.clicked.connect(self.search_archived_orders)
+        search_btn.setStyleSheet(styles.BUTTON_LINK_STYLE)
+        search_layout.addWidget(search_btn)
+        
+        load_btn = QPushButton("Load All")
+        load_btn.clicked.connect(self.load_all_orders)
+        load_btn.setStyleSheet(styles.BUTTON_LINK_STYLE)
+        search_layout.addWidget(load_btn)
+        
+        panel.content_layout.addLayout(search_layout)
+        
+        orders_label = QLabel("Archived Orders")
+        orders_label.setStyleSheet("color: #64b5f6; font-size: 14pt; font-weight: bold; margin-top: 10px;")
+        panel.content_layout.addWidget(orders_label)
+        
         self.archived_table = QTableWidget()
-        self.archived_table.setColumnCount(3)
-        self.archived_table.setHorizontalHeaderLabels(["Order ID", "Company", "Board"])
+        self.archived_table.setColumnCount(6)
+        self.archived_table.setHorizontalHeaderLabels([
+            "Order ID", "Order Number", "Company", "Board", "Status", "File Path"
+        ])
         self.archived_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.archived_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.archived_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        layout.addWidget(self.archived_table)
+        try:
+            self.archived_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        except Exception:
+            pass
+        self.archived_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
+        panel.content_layout.addWidget(self.archived_table)
+        
+        order_btn_row = QHBoxLayout()
+        restore_order_btn = QPushButton("Restore Order")
+        restore_order_btn.clicked.connect(self.restore_selected_order)
+        restore_order_btn.setStyleSheet(styles.BUTTON_STYLE)
+        order_btn_row.addWidget(restore_order_btn)
+        
+        delete_order_btn = QPushButton("Delete Order Permanently")
+        delete_order_btn.clicked.connect(self.delete_selected_order_permanently)
+        delete_order_btn.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
+        order_btn_row.addWidget(delete_order_btn)
+        order_btn_row.addStretch()
+        
+        panel.content_layout.addLayout(order_btn_row)
+        
+        boards_label = QLabel("Archived Boards")
+        boards_label.setStyleSheet("color: #64b5f6; font-size: 14pt; font-weight: bold; margin-top: 5px; margin-bottom: 10px;")
+        panel.content_layout.addWidget(boards_label)
+        
+        self.archived_boards_table = QTableWidget()
+        self.archived_boards_table.setColumnCount(3)
+        self.archived_boards_table.setHorizontalHeaderLabels(["Board ID", "Board Name", "Company"])
+        self.archived_boards_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.archived_boards_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.archived_boards_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        try:
+            self.archived_boards_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.archived_boards_table.horizontalHeader().setStretchLastSection(True)
+        except Exception:
+            pass
+        self.archived_boards_table.setWordWrap(True)
+        self.archived_boards_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.archived_boards_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
+        panel.content_layout.addWidget(self.archived_boards_table)
+        
+        board_btn_layout = QHBoxLayout()
+        self.restore_board_button = QPushButton("Restore Board")
+        self.restore_board_button.clicked.connect(self.restore_selected_board)
+        self.restore_board_button.setStyleSheet(styles.BUTTON_STYLE)
+        board_btn_layout.addWidget(self.restore_board_button)
+        
+        self.delete_board_permanent_button = QPushButton("Delete Board Permanently")
+        self.delete_board_permanent_button.clicked.connect(self.delete_selected_board_permanently)
+        self.delete_board_permanent_button.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
+        board_btn_layout.addWidget(self.delete_board_permanent_button)
+        board_btn_layout.addStretch()
+        
+        panel.content_layout.addLayout(board_btn_layout)
+        
+        companies_label = QLabel("Archived Companies")
+        companies_label.setStyleSheet("color: #64b5f6; font-size: 14pt; font-weight: bold; margin-top: 20px;")
+        panel.content_layout.addWidget(companies_label)
+        
+        self.archived_companies_table = QTableWidget()
+        self.archived_companies_table.setColumnCount(3)
+        self.archived_companies_table.setHorizontalHeaderLabels(["Company ID", "Company Name", "Client Path"])
+        self.archived_companies_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.archived_companies_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.archived_companies_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        try:
+            self.archived_companies_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.archived_companies_table.horizontalHeader().setStretchLastSection(True)
+        except Exception:
+            pass
+        self.archived_companies_table.setWordWrap(True)
+        self.archived_companies_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.archived_companies_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
+        panel.content_layout.addWidget(self.archived_companies_table)
+        
+        comp_btn_layout = QHBoxLayout()
+        self.restore_company_button = QPushButton("Restore Company")
+        self.restore_company_button.clicked.connect(self.restore_selected_company)
+        self.restore_company_button.setStyleSheet(styles.BUTTON_STYLE)
+        comp_btn_layout.addWidget(self.restore_company_button)
+        
+        self.delete_company_permanent_button = QPushButton("Delete Company Permanently")
+        self.delete_company_permanent_button.clicked.connect(self.delete_selected_company_permanently)
+        self.delete_company_permanent_button.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
+        comp_btn_layout.addWidget(self.delete_company_permanent_button)
+        comp_btn_layout.addStretch()
+        
+        panel.content_layout.addLayout(comp_btn_layout)
+        
+        return panel
 
-        self.archive_button = QPushButton("Archive Selected Order")
-        self.archive_button.setStyleSheet(styles.BUTTON_STYLE)
-        self.archive_button.clicked.connect(self.archive_order)
-        layout.addWidget(self.archive_button)
-
-        return tab
-
-    # --- Users Tab ---
-    def build_users_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-
-        layout.addWidget(QLabel("Add new user"))
-        user_layout = QHBoxLayout()
+    def build_users_panel(self):
+        """Build users management panel"""
+        panel = ContentPanel("Manage Users")
+        
+        add_layout = QHBoxLayout()
         self.new_user_input = QLineEdit()
-        self.new_user_input.setPlaceholderText("Enter username")
+        self.new_user_input.setPlaceholderText("Username")
+        add_layout.addWidget(self.new_user_input)
+        
         self.new_user_password = QLineEdit()
-        self.new_user_password.setPlaceholderText("Enter password")
+        self.new_user_password.setPlaceholderText("Password")
         self.new_user_password.setEchoMode(QLineEdit.Password)
-        self.add_user_button = QPushButton("Add User")
-        self.add_user_button.setStyleSheet(styles.BUTTON_STYLE)
-        self.add_user_button.clicked.connect(self.add_user)
-        user_layout.addWidget(self.new_user_input)
-        user_layout.addWidget(self.new_user_password)
-        user_layout.addWidget(self.add_user_button)
-        layout.addLayout(user_layout)
-
-        layout.addWidget(QLabel("Manage users"))
+        add_layout.addWidget(self.new_user_password)
+        
+        self.user_role_dropdown = QComboBox()
+        self.user_role_dropdown.addItem("user")
+        self.user_role_dropdown.addItem("admin")
+        add_layout.addWidget(self.user_role_dropdown)
+        
+        add_btn = QPushButton("Add User")
+        add_btn.clicked.connect(self.add_user)
+        add_btn.setStyleSheet(styles.BUTTON_LINK_STYLE)
+        add_layout.addWidget(add_btn)
+        
+        panel.content_layout.addLayout(add_layout)
+        
         self.user_table = QTableWidget()
-        self.user_table.setColumnCount(2)
-        self.user_table.setHorizontalHeaderLabels(["Username", "Role"])
+        self.user_table.setColumnCount(3)
+        self.user_table.setHorizontalHeaderLabels(["User ID", "Username", "Role"])
         self.user_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.user_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.user_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        layout.addWidget(self.user_table)
+        try:
+            self.user_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.user_table.horizontalHeader().setStretchLastSection(True)
+        except Exception:
+            pass
+        self.user_table.setWordWrap(True)
+        self.user_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.user_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
+        panel.content_layout.addWidget(self.user_table)
         
-        button_layout = QHBoxLayout()
+        btn_row = QVBoxLayout()
         self.update_password_button = QPushButton("Update Password")
-        self.update_password_button.setStyleSheet(styles.BUTTON_STYLE)
         self.update_password_button.clicked.connect(self.update_password)
-
-        self.delete_user_button = QPushButton("Delete Selected User")
-        self.delete_user_button.setStyleSheet(styles.BUTTON_STYLE)
+        self.update_password_button.setStyleSheet(styles.BUTTON_STYLE)
+        btn_row.addWidget(self.update_password_button)
+        
+        self.delete_user_button = QPushButton("Delete User")
         self.delete_user_button.clicked.connect(self.delete_user)
+        self.delete_user_button.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
+        btn_row.addWidget(self.delete_user_button)
+        btn_row.addStretch()
+        
+        panel.content_layout.addLayout(btn_row)
+        
+        return panel
 
-        button_layout.addWidget(self.update_password_button)
-        button_layout.addWidget(self.delete_user_button)
-        layout.addLayout(button_layout)
+    # ==================== BUSINESS LOGIC METHODS ====================
+    # (All your existing methods follow - they remain exactly the same)
+    
+    def load_initial_data(self):
+        """Load all data from database on startup"""
+        try:
+            self.refresh_company_tree()
+            self.refresh_dropdowns()
+            self.load_users()
+            self.load_awaiting_confirmation_orders()
+            logger.info("Initial data loaded successfully")
+        except Exception as e:
+            logger.error(f"Failed to load initial data: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to load data:\n{str(e)}")
 
-        return tab
+    def handle_logout(self):
+        try:
+            self.close()
+            if callable(self.on_logout):
+                self.on_logout()
+        except Exception as e:
+            logger.error(f"Error during logout: {e}", exc_info=True)
 
-    # --- Helper: Refresh dropdowns ---
+    # ... (All remaining methods from your original file go here)
+    # I'm truncating for space but you should include ALL methods:
+    # - refresh_dropdowns, on
     def refresh_dropdowns(self):
-        # Companies
-        self.company_dropdown.clear()
-        self.company_dropdown.addItem("Select Company")
-        self.company_for_board_dropdown.clear()
-        self.company_for_board_dropdown.addItem("Select Company")
-        for company in self.company_boards:
-            self.company_dropdown.addItem(company)
-            self.company_for_board_dropdown.addItem(company)
+        """Refresh company and board dropdowns from database"""
+        try:
+            include_archived = getattr(self, 'show_archived_checkbox', None) and self.show_archived_checkbox.isChecked()
+            try:
+                companies = self.db_manager.get_companies_all(include_archived=include_archived)
+            except Exception:
+                companies = self.db_manager.get_companies()
+            
+            # Clear and repopulate company dropdowns
+            self.company_dropdown.clear()
+            self.company_dropdown.addItem("Select Company", None)
+            self.company_for_board_dropdown.clear()
+            self.company_for_board_dropdown.addItem("Select Company", None)
+            
+            for company in companies:
+                company_id, company_name = company[0], company[1]
+                self.company_dropdown.addItem(company_name, company_id)
+                self.company_for_board_dropdown.addItem(company_name, company_id)
+            
+            logger.info("Dropdowns refreshed")
+        except Exception as e:
+            logger.error(f"Failed to refresh dropdowns: {e}", exc_info=True)
 
-        # Boards
+    def on_company_selected(self, index):
+        """When company is selected, load its boards"""
+        company_id = self.company_dropdown.currentData()
         self.board_dropdown.clear()
-        self.board_dropdown.addItem("Select Board")
-        for boards in self.company_boards.values():
-            for board in boards:
-                self.board_dropdown.addItem(board)
+        self.board_dropdown.addItem("Select Board", None)
+        
+        if company_id:
+            try:
+                boards = self.db_manager.get_boards_by_company(company_id)
+                for b in boards:
+                    board_id = b[0]
+                    board_name = b[1]
+                    archived = b[2] if len(b) > 2 else 0
+                    if archived:
+                        continue
+                    self.board_dropdown.addItem(board_name, board_id)
+                
+                # Populate output path and customer code
+                include_archived = getattr(self, 'show_archived_checkbox', None) and self.show_archived_checkbox.isChecked()
+                try:
+                    companies = self.db_manager.get_companies_all(include_archived=include_archived)
+                except Exception:
+                    companies = self.db_manager.get_companies()
+                company = next((c for c in companies if c[0] == company_id), None)
+                if company:
+                    client_path = company[2] if len(company) > 2 else None
+                    cust_id = company[3] if len(company) > 3 else None
+                    if client_path:
+                        self.output_path_input.setText(client_path)
+                    if cust_id:
+                        self.cust_code_input.setText(str(cust_id))
+            except Exception as e:
+                logger.error(f"Failed to load boards: {e}", exc_info=True)
 
-    # --- Helper: Refresh tree ---
     def refresh_company_tree(self):
-        self.company_tree.clear()
-        for company, boards in self.company_boards.items():
-            company_item = QTreeWidgetItem([company])
-            for board in boards:
-                QTreeWidgetItem(company_item, ["", board])
-            self.company_tree.addTopLevelItem(company_item)
+        """Refresh company/board tree from database"""
+        try:
+            self.company_tree.clear()
+            include_archived = getattr(self, 'show_archived_checkbox', None) and self.show_archived_checkbox.isChecked()
+            try:
+                companies = self.db_manager.get_companies_all(include_archived=include_archived)
+            except Exception:
+                companies = self.db_manager.get_companies()
+            
+            for company in companies:
+                company_id = company[0]
+                company_name = company[1]
+                company_item = QTreeWidgetItem([company_name, ""])
+                company_item.setData(0, Qt.UserRole, company_id)
+                
+                # Load boards
+                boards = self.db_manager.get_boards_by_company(company_id)
+                board_items = {}
+                for b in boards:
+                    board_id = b[0]
+                    board_name = b[1]
+                    archived = b[2] if len(b) > 2 else 0
+                    if archived:
+                        continue
+                    board_item = QTreeWidgetItem(["", board_name])
+                    board_item.setData(1, Qt.UserRole, board_id)
+                    company_item.addChild(board_item)
+                    board_items[board_id] = board_item
 
-    # --- Context Menu ---
+                # Load orders
+                all_orders = self.db_manager.get_orders(company_id=company_id)
+                for order in all_orders:
+                    order_id, order_number, c_id, board_id, status, file_path, created_at, created_by = order
+                    order_text = f"Order: {order_number} [{status}]"
+                    order_item = QTreeWidgetItem(["", order_text])
+                    order_item.setData(0, Qt.UserRole + 1, ("order", order_id))
+                    order_item.setData(0, Qt.UserRole + 2, file_path)
+                    
+                    if board_id and board_id in board_items:
+                        board_items[board_id].addChild(order_item)
+                    else:
+                        company_item.addChild(order_item)
+                
+                self.company_tree.addTopLevelItem(company_item)
+                company_item.setExpanded(True)
+            
+            logger.info("Company tree refreshed")
+        except Exception as e:
+            logger.error(f"Failed to refresh company tree: {e}", exc_info=True)
+
     def open_context_menu(self, position):
         item = self.company_tree.itemAt(position)
         if not item:
             return
+            
         menu = QMenu()
-        if not item.parent():  # Company
-            edit_action = menu.addAction("Edit Company")
-            delete_action = menu.addAction("Delete Company")
-            action = menu.exec_(self.company_tree.viewport().mapToGlobal(position))
-            if action == edit_action:
-                self.edit_company(item.text(0))
-            elif action == delete_action:
-                self.delete_company(item.text(0))
-        else:  # Board
-            company = item.parent().text(0)
-            board = item.text(1)
-            edit_action = menu.addAction("Edit Board")
-            delete_action = menu.addAction("Delete Board")
-            action = menu.exec_(self.company_tree.viewport().mapToGlobal(position))
-            if action == edit_action:
-                self.edit_board(company, board)
-            elif action == delete_action:
-                self.delete_board(company, board)
+        
+        # Check if order node
+        try:
+            data_order = item.data(0, Qt.UserRole + 1)
+        except Exception:
+            data_order = None
 
-    # --- Placeholder Logic ---
-    def create_order(self):
-        company = self.company_dropdown.currentText()
-        board = self.board_dropdown.currentText()
-        total = self.total_boards_input.text().strip()
-        if not total.isdigit():
-            QMessageBox.warning(self, "Error", "Total boards must be a number.")
+        if data_order and isinstance(data_order, tuple) and data_order[0] == 'order':
+            order_id = data_order[1]
+            view_action = menu.addAction("View Order File")
+            archive_action = menu.addAction("Archive Order")
+            action = menu.exec_(self.company_tree.viewport().mapToGlobal(position))
+            
+            if action == view_action:
+                file_path = item.data(0, Qt.UserRole + 2)
+                if file_path:
+                    import os
+                    try:
+                        if os.path.exists(file_path):
+                            os.startfile(file_path)
+                        else:
+                            QMessageBox.warning(self, "File not found", f"File not found:\n{file_path}")
+                    except Exception as e:
+                        QMessageBox.warning(self, "Open Failed", f"Could not open file:\n{e}")
+                else:
+                    QMessageBox.warning(self, "No file", "No file path recorded for this order.")
+
+            elif action == archive_action:
+                try:
+                    self.db_manager.archive_order(order_id)
+                    QMessageBox.information(self, "Archived", "Order archived and moved to Archive tab.")
+                    self.load_all_orders()
+                    self.refresh_company_tree()
+                except Exception as e:
+                    logger.error(f"Failed to archive order: {e}", exc_info=True)
+                    QMessageBox.critical(self, "Error", f"Failed to archive order:\n{e}")
             return
-        QMessageBox.information(self, "Order", f"Creating order: {company}, {board}, {total}")
+
+        if not item.parent():  # Company
+            company_name = item.text(0)
+            company_id = item.data(0, Qt.UserRole)
+            
+            edit_action = menu.addAction("Edit Company Path")
+            delete_action = menu.addAction("Archive Company")
+            action = menu.exec_(self.company_tree.viewport().mapToGlobal(position))
+
+            if action == edit_action:
+                self.edit_company_path(company_id, company_name)
+            elif action == delete_action:
+                self.delete_company(company_id, company_name)
+        else:  # Board
+            board_name = item.text(1)
+            board_id = item.data(1, Qt.UserRole)
+            company_item = item.parent()
+            company_name = company_item.text(0)
+            company_id = company_item.data(0, Qt.UserRole)
+            
+            edit_action = menu.addAction("Edit Board")
+            archive_action = menu.addAction("Archive Board")
+            action = menu.exec_(self.company_tree.viewport().mapToGlobal(position))
+
+            if action == edit_action:
+                self.edit_board(company_id, board_id, board_name)
+            elif action == archive_action:
+                self.archive_board(company_id, board_id, board_name)
+
+    def create_order(self):
+        """Create a new order with XLSX file"""
+        company_id = self.company_dropdown.currentData()
+        board_id = self.board_dropdown.currentData()
+        total = self.total_boards_input.text().strip()
+        
+        if not company_id:
+            QMessageBox.warning(self, "Error", "Please select a company.")
+            return
+            
+        if not total.isdigit() or int(total) <= 0:
+            QMessageBox.warning(self, "Error", "Total boards must be a positive number.")
+            return
+        
+        order_number = self.order_number_input.text().strip()
+        if not order_number:
+            QMessageBox.warning(self, "Error", "Please enter an order number.")
+            return
+
+        # Check uniqueness
+        try:
+            with self.db_manager.get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT order_id FROM orders WHERE order_number=?", (order_number,))
+                if cur.fetchone():
+                    QMessageBox.warning(self, "Error", f"Order number '{order_number}' already exists.")
+                    return
+        except Exception as e:
+            logger.error(f"Failed to validate order number: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to validate order number:\n{str(e)}")
+            return
+
+        dest_dir = self.output_path_input.text().strip() or None
+
+        try:
+            cust_code = self.cust_code_input.text().strip() or None
+            if cust_code:
+                cust_code = cust_code.upper()
+
+            serial_prefix = None
+            if cust_code:
+                serial_prefix = f"{cust_code}-{order_number}-"
+
+            file_path, count = self.xlsx_manager.create_order_file(
+                order_number=order_number,
+                created_by=self.user_id,
+                user_id=self.user_id,
+                company_id=company_id,
+                pass_fail=True,
+                pass_fail_timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                failure_explanation="",
+                fix_explanation="",
+                board_id=board_id,
+                serial_count=int(total),
+                dest_dir=dest_dir,
+                serial_prefix=serial_prefix,
+            )
+
+            logger.info(f"Order {order_number} created with {count} serial numbers")
+            QMessageBox.information(
+                self, 
+                "Order Created", 
+                f"Order {order_number} created successfully!\n"
+                f"File: {file_path}\n"
+                f"Serial numbers: {count}"
+            )
+
+            # Clear inputs
+            self.company_dropdown.setCurrentIndex(0)
+            self.board_dropdown.setCurrentIndex(0)
+            self.total_boards_input.clear()
+            self.order_number_input.clear()
+            self.cust_code_input.clear()
+
+        except Exception as e:
+            logger.error(f"Failed to create order: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to create order:\n{str(e)}")
+
+    def preview_order(self):
+        """Generate preview of XLSX rows"""
+        company_id = self.company_dropdown.currentData()
+        board_id = self.board_dropdown.currentData()
+        total = self.total_boards_input.text().strip()
+
+        if not company_id:
+            QMessageBox.warning(self, "Error", "Please select a company to preview.")
+            return
+
+        if not total.isdigit() or int(total) <= 0:
+            QMessageBox.warning(self, "Error", "Total boards must be a positive number.")
+            return
+
+        order_number = self.order_number_input.text().strip() or "PREVIEW"
+        cust_code = self.cust_code_input.text().strip() or None
+        if cust_code:
+            cust_code = cust_code.upper()
+
+        serial_prefix = None
+        if cust_code:
+            serial_prefix = f"{cust_code}-{order_number}-"
+
+        serials = self.xlsx_manager._generate_serial_numbers(prefix=serial_prefix, start=1, count=int(total))
+
+        show_count = min(len(serials), 50)
+        self.preview_table.setRowCount(0)
+        for i in range(show_count):
+            sn = serials[i]
+            row_idx = i
+            self.preview_table.insertRow(row_idx)
+            self.preview_table.setItem(row_idx, 0, QTableWidgetItem(str(self.user_id)))
+            self.preview_table.setItem(row_idx, 1, QTableWidgetItem(str(company_id)))
+            self.preview_table.setItem(row_idx, 2, QTableWidgetItem(str(board_id) if board_id else ""))
+            self.preview_table.setItem(row_idx, 3, QTableWidgetItem(sn))
+            self.preview_table.setItem(row_idx, 4, QTableWidgetItem("Pending"))
+            self.preview_table.setItem(row_idx, 5, QTableWidgetItem(""))
+            self.preview_table.setItem(row_idx, 6, QTableWidgetItem(""))
+            self.preview_table.setItem(row_idx, 7, QTableWidgetItem(""))
+
+        self.preview_label.setVisible(True)
+        self.preview_table.setVisible(True)
+
+    def browse_output_path(self):
+        """Open folder picker for output directory"""
+        selected = QFileDialog.getExistingDirectory(self, "Select Output Directory", "")
+        if selected:
+            self.output_path_input.setText(selected)
 
     def add_company(self):
-        company = self.new_company_input.text().strip()
-        if not company:
+        """Add a new company to database"""
+        company_name = self.new_company_input.text().strip()
+        cust_code = self.new_company_cust_input.text().strip()
+        
+        if not company_name:
             QMessageBox.warning(self, "Error", "Please enter a company name.")
             return
-        self.company_boards[company] = []
-        self.refresh_company_tree()
-        self.refresh_dropdowns()
-        self.new_company_input.clear()
+        if not cust_code:
+            QMessageBox.warning(self, "Error", "Please enter a Customer Code (e.g. QTX).")
+            return
+        
+        client_path = QFileDialog.getExistingDirectory(
+            self,
+            "Select Client Storage Path",
+            "P:/EMS Testing & Repair/clients"
+        )
+        
+        if not client_path:
+            return
+        
+        try:
+            self.db_manager.add_company(company_name, client_path, cust_code.upper())
+            logger.info(f"Company added: {company_name} (cust_id={cust_code.upper()})")
+            QMessageBox.information(self, "Success", f"Company '{company_name}' added successfully!")
+            
+            self.refresh_company_tree()
+            self.refresh_dropdowns()
+            self.new_company_input.clear()
+            self.new_company_cust_input.clear()
+            
+        except Exception as e:
+            logger.error(f"Failed to add company: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to add company:\n{str(e)}")
+
+    def edit_company_path(self, company_id, company_name):
+        """Edit company storage path"""
+        new_path = QFileDialog.getExistingDirectory(
+            self,
+            f"Select New Path for {company_name}",
+            "P:/EMS Testing & Repair/clients"
+        )
+        
+        if new_path is None or new_path == "":
+            return
+
+        try:
+            companies = self.db_manager.get_companies()
+            company = next((c for c in companies if c[0] == company_id), None)
+            current_cust = company[3] if company and len(company) > 3 else ""
+            new_cust, ok = QInputDialog.getText(self, "Edit Customer Code", "Customer Code:", text=str(current_cust))
+            if not ok:
+                return
+
+            new_cust = new_cust.strip().upper() if new_cust else None
+
+            with self.db_manager.get_connection() as conn:
+                conn.execute(
+                    "UPDATE companies SET client_path=?, cust_id=? WHERE company_id=?",
+                    (new_path, new_cust, company_id)
+                )
+                conn.commit()
+
+            logger.info(f"Company updated for {company_name}")
+            QMessageBox.information(self, "Success", "Company updated!")
+            self.refresh_company_tree()
+            self.refresh_dropdowns()
+
+        except Exception as e:
+            logger.error(f"Failed to update company: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to update company:\n{str(e)}")
+
+    def delete_company(self, company_id, company_name):
+        """Archive a company"""
+        confirm = QMessageBox.question(
+            self,
+            "Archive Company",
+            f"Archive company '{company_name}' and hide it from normal lists?\n\nThis preserves boards and orders. Permanent deletion is available in the Archive tab.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if confirm == QMessageBox.Yes:
+            try:
+                self.db_manager.archive_company(company_id)
+                logger.info(f"Company archived: {company_name}")
+                QMessageBox.information(self, "Archived", "Company archived and hidden from normal lists.")
+                self.refresh_company_tree()
+                self.refresh_dropdowns()
+            except Exception as e:
+                logger.error(f"Failed to archive company: {e}", exc_info=True)
+                QMessageBox.critical(self, "Error", f"Failed to archive company:\n{str(e)}")
+
+    def on_toggle_show_archived(self, checked: bool):
+        """Toggle showing archived companies"""
+        try:
+            self.refresh_company_tree()
+            self.refresh_dropdowns()
+        except Exception as e:
+            logger.error(f"Failed to toggle show archived: {e}", exc_info=True)
 
     def add_board(self):
-        board = self.new_board_input.text().strip()
-        company = self.company_for_board_dropdown.currentText()
-        if company == "Select Company":
+        """Add a new board to a company"""
+        board_name = self.new_board_input.text().strip()
+        company_id = self.company_for_board_dropdown.currentData()
+        
+        if not company_id:
             QMessageBox.warning(self, "Error", "Select a company first.")
             return
-        if not board:
+            
+        if not board_name:
             QMessageBox.warning(self, "Error", "Please enter a board name.")
             return
-        self.company_boards[company].append(board)
-        self.refresh_company_tree()
-        self.refresh_dropdowns()
-        self.new_board_input.clear()
-        self.company_for_board_dropdown.setCurrentIndex(0)
+        
+        try:
+            self.db_manager.add_board(company_id, board_name)
+            logger.info(f"Board added: {board_name}")
+            QMessageBox.information(self, "Success", f"Board '{board_name}' added successfully!")
+            
+            self.refresh_company_tree()
+            self.refresh_dropdowns()
+            self.new_board_input.clear()
+            
+        except Exception as e:
+            logger.error(f"Failed to add board: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to add board:\n{str(e)}")
 
-    def edit_company(self, company):
-        new_name, ok = QInputDialog.getText(self, "Edit Company", "New name:", text=company)
+    def edit_board(self, company_id, board_id, board_name):
+        """Edit board name"""
+        new_name, ok = QInputDialog.getText(
+            self,
+            "Edit Board",
+            "New board name:",
+            text=board_name
+        )
+        
         if ok and new_name.strip():
-            self.company_boards[new_name.strip()] = self.company_boards.pop(company)
-            self.refresh_company_tree()
-            self.refresh_dropdowns()
+            try:
+                with self.db_manager.get_connection() as conn:
+                    conn.execute(
+                        "UPDATE boards SET board_name=? WHERE board_id=?",
+                        (new_name.strip(), board_id)
+                    )
+                    conn.commit()
+                
+                logger.info(f"Board updated: {board_name}")
+                QMessageBox.information(self, "Success", "Board updated!")
+                self.refresh_company_tree()
+                self.refresh_dropdowns()
+                
+            except Exception as e:
+                logger.error(f"Failed to update board: {e}", exc_info=True)
+                QMessageBox.critical(self, "Error", f"Failed to update board:\n{str(e)}")
 
-    def delete_company(self, company):
-        confirm = QMessageBox.question(self, "Delete", f"Delete {company}?")
-        if confirm == QMessageBox.Yes:
-            self.company_boards.pop(company, None)
-            self.refresh_company_tree()
-            self.refresh_dropdowns()
+    def archive_board(self, company_id, board_id, board_name):
+        """Mark a board as archived"""
+        confirm = QMessageBox.question(
+            self,
+            "Archive Board",
+            f"Archive board '{board_name}'?\n\nThis will hide it from normal lists but preserve existing orders.",
+            QMessageBox.Yes | QMessageBox.No
+        )
 
-    def edit_board(self, company, board):
-        new_name, ok = QInputDialog.getText(self, "Edit Board", "New name:", text=board)
-        if ok and new_name.strip():
-            boards = self.company_boards[company]
-            boards[boards.index(board)] = new_name.strip()
-            self.refresh_company_tree()
-            self.refresh_dropdowns()
+        if confirm != QMessageBox.Yes:
+            return
 
-    def delete_board(self, company, board):
-        confirm = QMessageBox.question(self, "Delete", f"Delete {board}?")
-        if confirm == QMessageBox.Yes:
-            self.company_boards[company].remove(board)
+        try:
+            self.db_manager.archive_board(board_id)
+            logger.info(f"Board archived: {board_name}")
+            QMessageBox.information(self, "Archived", "Board archived successfully.")
             self.refresh_company_tree()
             self.refresh_dropdowns()
+        except Exception as e:
+            logger.error(f"Failed to archive board: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to archive board:\n{str(e)}")
+
+    def load_all_orders(self):
+        """Load all orders from database"""
+        try:
+            orders = self.db_manager.get_orders()
+            self.populate_archive_table(orders)
+            try:
+                self.populate_archived_boards()
+                try:
+                    self.populate_archived_companies()
+                except Exception:
+                    logger.exception("Failed to populate archived companies")
+            except Exception:
+                logger.exception("Failed to populate archived boards")
+            logger.info(f"Loaded {len(orders)} orders")
+            
+        except Exception as e:
+            logger.error(f"Failed to load orders: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to load orders:\n{str(e)}")
 
     def search_archived_orders(self):
-        self.archived_table.setRowCount(2)
-        self.archived_table.setItem(0, 0, QTableWidgetItem("ORD001"))
-        self.archived_table.setItem(0, 1, QTableWidgetItem("Example Corp A"))
-        self.archived_table.setItem(0, 2, QTableWidgetItem("Board Type A"))
+        """Search orders by order number or company"""
+        search_term = self.search_input.text().strip().lower()
+        
+        if not search_term:
+            self.load_all_orders()
+            return
+        
+        try:
+            all_orders = self.db_manager.get_orders()
+            companies = {c[0]: c[1] for c in self.db_manager.get_companies()}
+            boards = {}
+            for company_id in companies:
+                for b in self.db_manager.get_boards_by_company(company_id):
+                    board_id = b[0]
+                    board_name = b[1]
+                    archived = b[2] if len(b) > 2 else 0
+                    if archived:
+                        continue
+                    boards[board_id] = board_name
+            
+            filtered_orders = []
+            for order in all_orders:
+                order_id, order_number, company_id, board_id, status, file_path, created_at, created_by = order
+                company_name = companies.get(company_id, "Unknown")
+                board_name = boards.get(board_id, "N/A") if board_id else "N/A"
+                
+                if (search_term in order_number.lower() or 
+                    search_term in company_name.lower() or
+                    search_term in board_name.lower()):
+                    filtered_orders.append(order)
+            
+            self.populate_archive_table(filtered_orders)
+            logger.info(f"Search found {len(filtered_orders)} orders")
+            
+        except Exception as e:
+            logger.error(f"Failed to search orders: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to search:\n{str(e)}")
 
-    def archive_order(self):
+    def populate_archive_table(self, orders):
+        """Populate the archive table with orders"""
+        self.archived_table.setRowCount(0)
+        
+        try:
+            companies = {c[0]: c[1] for c in self.db_manager.get_companies()}
+            boards = {}
+            for company_id in companies:
+                for b in self.db_manager.get_boards_by_company(company_id):
+                    board_id = b[0]
+                    board_name = b[1]
+                    boards[board_id] = board_name
+            
+            for row_idx, order in enumerate(orders):
+                order_id, order_number, company_id, board_id, status, file_path, created_at, created_by = order
+
+                self.archived_table.insertRow(row_idx)
+                self.archived_table.setItem(row_idx, 0, QTableWidgetItem(str(order_id)))
+                self.archived_table.setItem(row_idx, 1, QTableWidgetItem(order_number))
+                self.archived_table.setItem(row_idx, 2, QTableWidgetItem(companies.get(company_id, "Unknown")))
+                self.archived_table.setItem(row_idx, 3, QTableWidgetItem(boards.get(board_id, "N/A") if board_id else "N/A"))
+                self.archived_table.setItem(row_idx, 4, QTableWidgetItem(status))
+                self.archived_table.setItem(row_idx, 5, QTableWidgetItem(file_path or ""))
+                
+        except Exception as e:
+            logger.error(f"Failed to populate archive table: {e}", exc_info=True)
+        finally:
+            # Adjust row heights to fit content
+            try:
+                fm = self.archived_table.fontMetrics()
+                default_h = int(fm.height() * 1.3)
+                if default_h < 20:
+                    default_h = 20
+                self.archived_table.verticalHeader().setDefaultSectionSize(default_h)
+                self.archived_table.resizeRowsToContents()
+            except Exception:
+                pass
+
+    def populate_archived_boards(self):
+        """Populate archived boards table"""
+        try:
+            self.archived_boards_table.setRowCount(0)
+            companies = {c[0]: c[1] for c in self.db_manager.get_companies()}
+            row_idx = 0
+            for company_id, company_name in companies.items():
+                boards = self.db_manager.get_boards_by_company(company_id)
+                for b in boards:
+                    board_id = b[0]
+                    board_name = b[1]
+                    archived = b[2] if len(b) > 2 else 0
+                    if archived:
+                        self.archived_boards_table.insertRow(row_idx)
+                        self.archived_boards_table.setItem(row_idx, 0, QTableWidgetItem(str(board_id)))
+                        self.archived_boards_table.setItem(row_idx, 1, QTableWidgetItem(board_name))
+                        self.archived_boards_table.setItem(row_idx, 2, QTableWidgetItem(company_name))
+                        row_idx += 1
+        except Exception as e:
+            logger.error(f"Failed to populate archived boards: {e}", exc_info=True)
+        finally:
+            try:
+                fm = self.archived_boards_table.fontMetrics()
+                default_h = int(fm.height() * 1.3)
+                if default_h < 18:
+                    default_h = 18
+                self.archived_boards_table.verticalHeader().setDefaultSectionSize(default_h)
+                self.archived_boards_table.resizeRowsToContents()
+            except Exception:
+                pass
+
+    def populate_archived_companies(self):
+        """Populate archived companies table"""
+        try:
+            self.archived_companies_table.setRowCount(0)
+            companies = self.db_manager.get_companies_all(include_archived=True)
+            row_idx = 0
+            for c in companies:
+                company_id = c[0]
+                company_name = c[1]
+                client_path = c[2] if len(c) > 2 else ""
+                archived_flag = c[4] if len(c) > 4 else 0
+                if archived_flag:
+                    self.archived_companies_table.insertRow(row_idx)
+                    self.archived_companies_table.setItem(row_idx, 0, QTableWidgetItem(str(company_id)))
+                    self.archived_companies_table.setItem(row_idx, 1, QTableWidgetItem(company_name))
+                    self.archived_companies_table.setItem(row_idx, 2, QTableWidgetItem(client_path))
+                    row_idx += 1
+        except Exception as e:
+            logger.error(f"Failed to populate archived companies: {e}", exc_info=True)
+        finally:
+            try:
+                fm = self.archived_companies_table.fontMetrics()
+                default_h = int(fm.height() * 1.3)
+                if default_h < 18:
+                    default_h = 18
+                self.archived_companies_table.verticalHeader().setDefaultSectionSize(default_h)
+                self.archived_companies_table.resizeRowsToContents()
+            except Exception:
+                pass
+
+    def get_selected_order_id(self):
         row = self.archived_table.currentRow()
-        if row >= 0:
-            order_id = self.archived_table.item(row, 0).text()
-            QMessageBox.information(self, "Archive", f"Archived order {order_id}")
+        if row < 0:
+            return None
+        try:
+            return int(self.archived_table.item(row, 0).text())
+        except Exception:
+            return None
+
+    def restore_selected_order(self):
+        order_id = self.get_selected_order_id()
+        if not order_id:
+            QMessageBox.warning(self, "No selection", "Please select an order to restore.")
+            return
+        try:
+            self.db_manager.unarchive_order(order_id)
+            QMessageBox.information(self, "Restored", "Order restored successfully.")
+            self.load_all_orders()
+        except Exception as e:
+            logger.error(f"Failed to restore order: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to restore order: {e}")
+
+    def delete_selected_order_permanently(self):
+        order_id = self.get_selected_order_id()
+        if not order_id:
+            QMessageBox.warning(self, "No selection", "Please select an order to delete permanently.")
+            return
+        ok = QMessageBox.question(self, "Confirm Permanent Delete",
+                                  "This will permanently delete the order and cannot be undone. Are you sure?",
+                                  QMessageBox.Yes | QMessageBox.No)
+        if ok != QMessageBox.Yes:
+            return
+        try:
+            self.db_manager.delete_order_permanently(order_id)
+            QMessageBox.information(self, "Deleted", "Order permanently deleted.")
+            self.load_all_orders()
+        except Exception as e:
+            logger.error(f"Failed to permanently delete order: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to permanently delete order: {e}")
+
+    def restore_selected_board(self):
+        row = self.archived_boards_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Error", "Please select an archived board first.")
+            return
+        board_id = int(self.archived_boards_table.item(row, 0).text())
+        try:
+            self.db_manager.unarchive_board(board_id)
+            QMessageBox.information(self, "Restored", "Board restored successfully.")
+            self.refresh_company_tree()
+            self.refresh_dropdowns()
+            self.load_all_orders()
+        except Exception as e:
+            logger.error(f"Failed to restore board: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to restore board: {e}")
+
+    def delete_selected_board_permanently(self):
+        row = self.archived_boards_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Error", "Please select an archived board first.")
+            return
+        board_id = int(self.archived_boards_table.item(row, 0).text())
+        confirm = QMessageBox.question(self, "Confirm Permanent Delete", 
+                                       "This will permanently delete the board and cannot be undone. Continue?", 
+                                       QMessageBox.Yes | QMessageBox.No)
+        if confirm != QMessageBox.Yes:
+            return
+        try:
+            self.db_manager.delete_board_permanently(board_id)
+            QMessageBox.information(self, "Deleted", "Board permanently deleted.")
+            self.refresh_company_tree()
+            self.refresh_dropdowns()
+            self.load_all_orders()
+        except Exception as e:
+            logger.error(f"Failed to permanently delete board: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to delete board: {e}")
+
+    def restore_selected_company(self):
+        row = self.archived_companies_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Error", "Please select an archived company first.")
+            return
+        try:
+            company_id = int(self.archived_companies_table.item(row, 0).text())
+        except Exception:
+            QMessageBox.warning(self, "Error", "Invalid company selection.")
+            return
+
+        try:
+            self.db_manager.unarchive_company(company_id)
+            QMessageBox.information(self, "Restored", "Company restored successfully.")
+            self.refresh_company_tree()
+            self.refresh_dropdowns()
+            self.load_all_orders()
+        except Exception as e:
+            logger.error(f"Failed to restore company: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to restore company: {e}")
+
+    def delete_selected_company_permanently(self):
+        row = self.archived_companies_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Error", "Please select an archived company first.")
+            return
+        try:
+            company_id = int(self.archived_companies_table.item(row, 0).text())
+        except Exception:
+            QMessageBox.warning(self, "Error", "Invalid company selection.")
+            return
+
+        confirm = QMessageBox.question(self, "Confirm Permanent Delete", 
+                                       "This will permanently delete the company and all associated boards and orders. This cannot be undone. Continue?", 
+                                       QMessageBox.Yes | QMessageBox.No)
+        if confirm != QMessageBox.Yes:
+            return
+
+        try:
+            self.db_manager.delete_company_permanently(company_id)
+            QMessageBox.information(self, "Deleted", "Company permanently deleted.")
+            self.refresh_company_tree()
+            self.refresh_dropdowns()
+            self.load_all_orders()
+        except Exception as e:
+            logger.error(f"Failed to permanently delete company: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to delete company: {e}")
+
+    def load_awaiting_confirmation_orders(self):
+        """Scan orders and find those ready for admin confirmation"""
+        try:
+            self.await_table.setRowCount(0)
+            orders = self.db_manager.get_orders()
+            row_idx = 0
+            for order in orders:
+                order_id, order_number, company_id, board_id, status, file_path, created_at, created_by = order
+                if status == 'Archived':
+                    continue
+                try:
+                    ready = self.xlsx_manager.is_order_ready_for_confirmation(file_path)
+                except Exception:
+                    ready = False
+                if ready:
+                    company_name = next((c[1] for c in self.db_manager.get_companies() if c[0] == company_id), "Unknown")
+                    board_name = "N/A"
+                    if board_id:
+                        boards = self.db_manager.get_boards_by_company(company_id)
+                        board_name = next((b[1] for b in boards if b[0] == board_id), "N/A")
+
+                    self.await_table.insertRow(row_idx)
+                    self.await_table.setItem(row_idx, 0, QTableWidgetItem(str(order_id)))
+                    self.await_table.setItem(row_idx, 1, QTableWidgetItem(order_number))
+                    self.await_table.setItem(row_idx, 2, QTableWidgetItem(company_name))
+                    self.await_table.setItem(row_idx, 3, QTableWidgetItem(board_name))
+                    self.await_table.setItem(row_idx, 4, QTableWidgetItem(file_path or ""))
+                    self.await_table.setItem(row_idx, 5, QTableWidgetItem(str(status)))
+                    row_idx += 1
+        except Exception as e:
+            logger.error(f"Failed to load awaiting confirmation orders: {e}", exc_info=True)
+        finally:
+            try:
+                fm = self.await_table.fontMetrics()
+                default_h = int(fm.height() * 1.3)
+                if default_h < 18:
+                    default_h = 18
+                self.await_table.verticalHeader().setDefaultSectionSize(default_h)
+                self.await_table.resizeRowsToContents()
+            except Exception:
+                pass
+
+    def get_selected_awaiting_order_id(self):
+        row = self.await_table.currentRow()
+        if row < 0:
+            return None
+        try:
+            return int(self.await_table.item(row, 0).text())
+        except Exception:
+            return None
+
+    def view_selected_awaiting_file(self):
+        row = self.await_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "No selection", "Please select an order first.")
+            return
+        file_path = self.await_table.item(row, 4).text()
+        if not file_path:
+            QMessageBox.warning(self, "No file", "Selected order has no file recorded.")
+            return
+        import os
+        try:
+            if os.path.exists(file_path):
+                os.startfile(file_path)
+            else:
+                QMessageBox.warning(self, "File not found", f"File not found:\n{file_path}")
+        except Exception as e:
+            QMessageBox.warning(self, "Open Failed", f"Could not open file:\n{e}")
+
+    def confirm_and_archive_selected(self):
+        order_id = self.get_selected_awaiting_order_id()
+        if not order_id:
+            QMessageBox.warning(self, "No selection", "Please select an order first.")
+            return
+        ok = QMessageBox.question(self, "Confirm & Archive", 
+                                  "Confirm that the XLSX looks correct and archive the order?", 
+                                  QMessageBox.Yes | QMessageBox.No)
+        if ok != QMessageBox.Yes:
+            return
+        try:
+            self.db_manager.archive_order(order_id)
+            QMessageBox.information(self, "Archived", "Order archived and moved to Archive tab.")
+            self.load_awaiting_confirmation_orders()
+            self.load_all_orders()
+            self.refresh_company_tree()
+        except Exception as e:
+            logger.error(f"Failed to confirm & archive order: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to archive order:\n{e}")
+
+    def load_users(self):
+        """Load all users from database"""
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT user_id, username, role FROM users")
+                users = cursor.fetchall()
+            
+            self.user_table.setRowCount(0)
+            for row_idx, (user_id, username, role) in enumerate(users):
+                self.user_table.insertRow(row_idx)
+                self.user_table.setItem(row_idx, 0, QTableWidgetItem(str(user_id)))
+                self.user_table.setItem(row_idx, 1, QTableWidgetItem(username))
+                self.user_table.setItem(row_idx, 2, QTableWidgetItem(role))
+            
+            logger.info(f"Loaded {len(users)} users")
+            # Adjust users table rows to fit content
+            try:
+                fm = self.user_table.fontMetrics()
+                default_h = int(fm.height() * 1.2)
+                if default_h < 18:
+                    default_h = 18
+                self.user_table.verticalHeader().setDefaultSectionSize(default_h)
+                self.user_table.resizeRowsToContents()
+            except Exception:
+                pass
+            
+        except Exception as e:
+            logger.error(f"Failed to load users: {e}", exc_info=True)
 
     def add_user(self):
+        """Add a new user to the database"""
         username = self.new_user_input.text().strip()
         password = self.new_user_password.text().strip()
+        role = self.user_role_dropdown.currentText()
+        
         if not username or not password:
             QMessageBox.warning(self, "Error", "Enter username and password")
             return
-        row = self.user_table.rowCount()
-        self.user_table.insertRow(row)
-        self.user_table.setItem(row, 0, QTableWidgetItem(username))
-        self.user_table.setItem(row, 1, QTableWidgetItem("Standard"))
-        self.new_user_input.clear()
-        self.new_user_password.clear()
+        
+        try:
+            self.db_manager.add_user(username, password, role)
+            logger.info(f"User added: {username} ({role})")
+            QMessageBox.information(self, "Success", f"User '{username}' added successfully!")
+            
+            self.load_users()
+            self.new_user_input.clear()
+            self.new_user_password.clear()
+            
+        except Exception as e:
+            logger.error(f"Failed to add user: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to add user:\n{str(e)}")
 
     def update_password(self):
+        """Update password for selected user"""
         row = self.user_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Error", "Please select a user first.")
             return
 
-        username = self.user_table.item(row, 0).text()
+        user_id = int(self.user_table.item(row, 0).text())
+        username = self.user_table.item(row, 1).text()
 
         new_pass, ok = QInputDialog.getText(
-            self, "Update Password", f"Enter new password for {username}:", QLineEdit.Password
+            self, 
+            "Update Password", 
+            f"Enter new password for {username}:", 
+            QLineEdit.Password
         )
+        
         if ok and new_pass.strip():
-            # 🔧 Later: send update to backend
-            QMessageBox.information(self, "Password Updated", f"Password updated for {username}")
+            try:
+                import hashlib
+                pw_hash = hashlib.sha256(new_pass.encode()).hexdigest()
+                
+                with self.db_manager.get_connection() as conn:
+                    conn.execute(
+                        "UPDATE users SET password_hash=? WHERE user_id=?",
+                        (pw_hash, user_id)
+                    )
+                    conn.commit()
+                
+                logger.info(f"Password updated for user: {username}")
+                QMessageBox.information(self, "Success", f"Password updated for {username}")
+                
+            except Exception as e:
+                logger.error(f"Failed to update password: {e}", exc_info=True)
+                QMessageBox.critical(self, "Error", f"Failed to update password:\n{str(e)}")
 
     def delete_user(self):
+        """Delete selected user"""
         row = self.user_table.currentRow()
-        if row >= 0:
-            username = self.user_table.item(row, 0).text()
-            confirm = QMessageBox.question(self, "Delete", f"Delete user {username}?")
-            if confirm == QMessageBox.Yes:
-                self.user_table.removeRow(row)
+        if row < 0:
+            QMessageBox.warning(self, "Error", "Please select a user first.")
+            return
+        
+        user_id = int(self.user_table.item(row, 0).text())
+        username = self.user_table.item(row, 1).text()
+        
+        if user_id == self.user_id:
+            QMessageBox.warning(self, "Error", "You cannot delete your own account!")
+            return
+        
+        confirm = QMessageBox.question(
+            self,
+            "Delete User",
+            f"Delete user '{username}'?\n\nThis cannot be undone.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if confirm == QMessageBox.Yes:
+            try:
+                with self.db_manager.get_connection() as conn:
+                    conn.execute("DELETE FROM users WHERE user_id=?", (user_id,))
+                    conn.commit()
+                
+                logger.info(f"User deleted: {username}")
+                QMessageBox.information(self, "Success", "User deleted!")
+                self.load_users()
+                
+            except Exception as e:
+                logger.error(f"Failed to delete user: {e}", exc_info=True)
+                QMessageBox.critical(self, "Error", f"Failed to delete user:\n{str(e)}")

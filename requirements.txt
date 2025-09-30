@@ -1,0 +1,11 @@
+# Label Tracker Application Requirements
+# Python 3.13.7
+
+# GUI Framework
+PyQt5>=5.15.9
+
+# Excel file handling
+openpyxl>=3.1.2
+
+# PyInstaller for building executable
+pyinstaller>=5.11.0

@@ -1,16 +1,22 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 
+import os
+
+project_root = os.path.abspath(os.path.dirname(__file__))
+
 a = Analysis(
     ['main.py'],
-    pathex=[],
+    pathex=[project_root],
     binaries=[],
+    # Only include app code and required non-Python files if any
     datas=[],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    # Exclude tests and documentation/info files
+    excludes=['tests', 'info'],
     noarchive=False,
     optimize=0,
 )
