@@ -130,7 +130,6 @@ class BlockingOrdersDialog(QDialog):
             except Exception as e:
                 QMessageBox.warning(self, "Open Failed", f"Could not open file:\n{e}")
 
-
 # ==================== MAIN ADMIN WINDOW ====================
 
 class AdminWindow(QWidget):
@@ -144,13 +143,20 @@ class AdminWindow(QWidget):
         
         self.setWindowTitle("Label Tracker - Admin")
         self.setMinimumSize(1200, 700)
+
+        from managers.db_manager import DatabaseManager
+        self.db = DatabaseManager()
+
+        self.company_boards = {}
         
         # Apply combined stylesheet from styles.py
         self.setStyleSheet(styles.FULL_APP_STYLE)
 
         logger.info(f"Admin window initialized for user: {username}")
         self.setup_ui()
-        self.load_initial_data()
+        # self.load_initial_data() #NOTE: No longer needed?
+        self.load_companies_from_db()
+
 
     def setup_ui(self):
         main_layout = QHBoxLayout(self)
@@ -666,8 +672,22 @@ class AdminWindow(QWidget):
         return panel
 
     # ==================== BUSINESS LOGIC METHODS ====================
-    # (All your existing methods follow - they remain exactly the same)
-    
+
+    def load_companies_from_db(self):
+        self.company_boards.clear()
+
+        companies = self.db.get_companies()
+        for company_id, company_name, client_path in companies:
+            boards = self.db.get_boards_by_company(company_id)
+            self.company_boards[company_name] = {
+                'id': company_id,
+                'client_path': client_path,
+                'boards': [(board_id, board_name) for board_id, board_name, _ in boards]
+            }
+
+        self.refresh_company_tree()
+        self.refresh_dropdowns()
+
     def load_initial_data(self):
         """Load all data from database on startup"""
         try:
@@ -688,9 +708,6 @@ class AdminWindow(QWidget):
         except Exception as e:
             logger.error(f"Error during logout: {e}", exc_info=True)
 
-    # ... (All remaining methods from your original file go here)
-    # I'm truncating for space but you should include ALL methods:
-    # - refresh_dropdowns, on
     def refresh_dropdowns(self):
         """Refresh company and board dropdowns from database"""
         try:
@@ -702,15 +719,20 @@ class AdminWindow(QWidget):
             
             # Clear and repopulate company dropdowns
             self.company_dropdown.clear()
-            self.company_dropdown.addItem("Select Company", None)
+            self.company_dropdown.addItem("Select Company")
             self.company_for_board_dropdown.clear()
-            self.company_for_board_dropdown.addItem("Select Company", None)
+            self.company_for_board_dropdown.addItem("Select Company")
             
-            for company in companies:
-                company_id, company_name = company[0], company[1]
-                self.company_dropdown.addItem(company_name, company_id)
-                self.company_for_board_dropdown.addItem(company_name, company_id)
+            for company_name in self.company_boards:
+                self.company_dropdown.addItem(company_name)
+                self.company_for_board_dropdown.addItem(company_name)
+
+            self.board_dropdown.clear()
+            self.board_dropdown.addItem("Select Part Number/Board")
             
+            for comapny_name, data in self.company_boards.items():
+                for board_id, board_name in data['boards']:
+                    self.board_dropdown.addItem(f"{board_name} ({company_name})")
             logger.info("Dropdowns refreshed")
         except Exception as e:
             logger.error(f"Failed to refresh dropdowns: {e}", exc_info=True)
@@ -750,128 +772,45 @@ class AdminWindow(QWidget):
                 logger.error(f"Failed to load boards: {e}", exc_info=True)
 
     def refresh_company_tree(self):
-        """Refresh company/board tree from database"""
         try:
             self.company_tree.clear()
-            include_archived = getattr(self, 'show_archived_checkbox', None) and self.show_archived_checkbox.isChecked()
-            try:
-                companies = self.db_manager.get_companies_all(include_archived=include_archived)
-            except Exception:
-                companies = self.db_manager.get_companies()
-            
-            for company in companies:
-                company_id = company[0]
-                company_name = company[1]
-                company_item = QTreeWidgetItem([company_name, ""])
-                company_item.setData(0, Qt.UserRole, company_id)
-                
-                # Load boards
-                boards = self.db_manager.get_boards_by_company(company_id)
-                board_items = {}
-                for b in boards:
-                    board_id = b[0]
-                    board_name = b[1]
-                    archived = b[2] if len(b) > 2 else 0
-                    if archived:
-                        continue
-                    board_item = QTreeWidgetItem(["", board_name])
-                    board_item.setData(1, Qt.UserRole, board_id)
-                    company_item.addChild(board_item)
-                    board_items[board_id] = board_item
-
-                # Load orders
-                all_orders = self.db_manager.get_orders(company_id=company_id)
-                for order in all_orders:
-                    order_id, order_number, c_id, board_id, status, file_path, created_at, created_by = order
-                    order_text = f"Order: {order_number} [{status}]"
-                    order_item = QTreeWidgetItem(["", order_text])
-                    order_item.setData(0, Qt.UserRole + 1, ("order", order_id))
-                    order_item.setData(0, Qt.UserRole + 2, file_path)
-                    
-                    if board_id and board_id in board_items:
-                        board_items[board_id].addChild(order_item)
-                    else:
-                        company_item.addChild(order_item)
-                
+            for company_name, data in self.company_boards.items():
+                company_item = QTreeWidgetItem([company_name])
+                for board_id, board_name in data['boards']:
+                    QTreeWidgetItem(company_item, ["", board_name])
                 self.company_tree.addTopLevelItem(company_item)
-                company_item.setExpanded(True)
-            
-            logger.info("Company tree refreshed")
         except Exception as e:
             logger.error(f"Failed to refresh company tree: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to refresh company tree:\n{e}")
 
     def open_context_menu(self, position):
         item = self.company_tree.itemAt(position)
         if not item:
             return
-            
         menu = QMenu()
-        
-        # Check if order node
-        try:
-            data_order = item.data(0, Qt.UserRole + 1)
-        except Exception:
-            data_order = None
-
-        if data_order and isinstance(data_order, tuple) and data_order[0] == 'order':
-            order_id = data_order[1]
-            view_action = menu.addAction("View Order File")
-            archive_action = menu.addAction("Archive Order")
-            action = menu.exec_(self.company_tree.viewport().mapToGlobal(position))
-            
-            if action == view_action:
-                file_path = item.data(0, Qt.UserRole + 2)
-                if file_path:
-                    import os
-                    try:
-                        if os.path.exists(file_path):
-                            os.startfile(file_path)
-                        else:
-                            QMessageBox.warning(self, "File not found", f"File not found:\n{file_path}")
-                    except Exception as e:
-                        QMessageBox.warning(self, "Open Failed", f"Could not open file:\n{e}")
-                else:
-                    QMessageBox.warning(self, "No file", "No file path recorded for this order.")
-
-            elif action == archive_action:
-                try:
-                    self.db_manager.archive_order(order_id)
-                    QMessageBox.information(self, "Archived", "Order archived and moved to Archive tab.")
-                    self.load_all_orders()
-                    self.refresh_company_tree()
-                except Exception as e:
-                    logger.error(f"Failed to archive order: {e}", exc_info=True)
-                    QMessageBox.critical(self, "Error", f"Failed to archive order:\n{e}")
-            return
-
         if not item.parent():  # Company
-            company_name = item.text(0)
-            company_id = item.data(0, Qt.UserRole)
-            
-            edit_action = menu.addAction("Edit Company Path")
-            delete_action = menu.addAction("Archive Company")
+            edit_action = menu.addAction("Edit Company")
+            archive_action = menu.addAction("Archive Company")  # Changed from "Delete"
             action = menu.exec_(self.company_tree.viewport().mapToGlobal(position))
-
             if action == edit_action:
-                self.edit_company_path(company_id, company_name)
-            elif action == delete_action:
-                self.delete_company(company_id, company_name)
-        else:  # Board
-            board_name = item.text(1)
-            board_id = item.data(1, Qt.UserRole)
-            company_item = item.parent()
-            company_name = company_item.text(0)
-            company_id = company_item.data(0, Qt.UserRole)
-            
-            edit_action = menu.addAction("Edit Board")
-            archive_action = menu.addAction("Archive Board")
-            action = menu.exec_(self.company_tree.viewport().mapToGlobal(position))
-
-            if action == edit_action:
-                self.edit_board(company_id, board_id, board_name)
+                self.edit_company(item.text(0))
             elif action == archive_action:
-                self.archive_board(company_id, board_id, board_name)
-
+                # TODO: Implement archive workflow
+                QMessageBox.information(self, "Archive", 
+                    "Archive functionality will be implemented in archive tab")
+        else:  # Board
+            company = item.parent().text(0)
+            board = item.text(1)
+            edit_action = menu.addAction("Edit Board")
+            archive_action = menu.addAction("Archive Board")  # Changed from "Delete"
+            action = menu.exec_(self.company_tree.viewport().mapToGlobal(position))
+            if action == edit_action:
+                self.edit_board(company, board)
+            elif action == archive_action:
+                # TODO: Implement archive workflow
+                QMessageBox.information(self, "Archive", 
+                    "Archive functionality will be implemented in archive tab")
+                
     def create_order(self):
         """Create a new order with XLSX file"""
         company_id = self.company_dropdown.currentData()
@@ -1000,39 +939,27 @@ class AdminWindow(QWidget):
             self.output_path_input.setText(selected)
 
     def add_company(self):
-        """Add a new company to database"""
-        company_name = self.new_company_input.text().strip()
-        cust_code = self.new_company_cust_input.text().strip()
-        
-        if not company_name:
+        company = self.new_company_input.text().strip()
+        if not company:
             QMessageBox.warning(self, "Error", "Please enter a company name.")
             return
-        if not cust_code:
-            QMessageBox.warning(self, "Error", "Please enter a Customer Code (e.g. QTX).")
+    
+        # Prompt for company folder path
+        from PyQt5.QtWidgets import QFileDialog
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Company Folder")
+    
+        if not folder_path:
+            QMessageBox.warning(self, "Error", "Please select a folder path.")
             return
-        
-        client_path = QFileDialog.getExistingDirectory(
-            self,
-            "Select Client Storage Path",
-            "P:/EMS Testing & Repair/clients"
-        )
-        
-        if not client_path:
-            return
-        
+    
         try:
-            self.db_manager.add_company(company_name, client_path, cust_code.upper())
-            logger.info(f"Company added: {company_name} (cust_id={cust_code.upper()})")
-            QMessageBox.information(self, "Success", f"Company '{company_name}' added successfully!")
-            
-            self.refresh_company_tree()
-            self.refresh_dropdowns()
+            company_id = self.db.add_company(company, folder_path)
+            self.load_companies_from_db()
             self.new_company_input.clear()
-            self.new_company_cust_input.clear()
-            
+            QMessageBox.information(self, "Success", f"Company '{company}' added successfully!")
         except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to add company: {str(e)}")
             logger.error(f"Failed to add company: {e}", exc_info=True)
-            QMessageBox.critical(self, "Error", f"Failed to add company:\n{str(e)}")
 
     def edit_company_path(self, company_id, company_name):
         """Edit company storage path"""
@@ -1071,25 +998,16 @@ class AdminWindow(QWidget):
             logger.error(f"Failed to update company: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Failed to update company:\n{str(e)}")
 
-    def delete_company(self, company_id, company_name):
-        """Archive a company"""
-        confirm = QMessageBox.question(
-            self,
-            "Archive Company",
-            f"Archive company '{company_name}' and hide it from normal lists?\n\nThis preserves boards and orders. Permanent deletion is available in the Archive tab.",
-            QMessageBox.Yes | QMessageBox.No
-        )
-
-        if confirm == QMessageBox.Yes:
+    def edit_company(self, company):
+        new_name, ok = QInputDialog.getText(self, "Edit Company", "New company name:", text=company)
+        if ok and new_name.strip():
             try:
-                self.db_manager.archive_company(company_id)
-                logger.info(f"Company archived: {company_name}")
-                QMessageBox.information(self, "Archived", "Company archived and hidden from normal lists.")
-                self.refresh_company_tree()
-                self.refresh_dropdowns()
+                self.db.update_company(company, new_name.strip())
+                self.load_companies_from_db()
+                QMessageBox.information(self, "Success", "Company updated!")
             except Exception as e:
-                logger.error(f"Failed to archive company: {e}", exc_info=True)
-                QMessageBox.critical(self, "Error", f"Failed to archive company:\n{str(e)}")
+                logger.error(f"Failed to update company: {e}", exc_info=True)
+                QMessageBox.critical(self, "Error", f"Failed to update company:\n{str(e)}")
 
     def on_toggle_show_archived(self, checked: bool):
         """Toggle showing archived companies"""
@@ -1100,57 +1018,38 @@ class AdminWindow(QWidget):
             logger.error(f"Failed to toggle show archived: {e}", exc_info=True)
 
     def add_board(self):
-        """Add a new board to a company"""
-        board_name = self.new_board_input.text().strip()
-        company_id = self.company_for_board_dropdown.currentData()
-        
-        if not company_id:
+        board = self.new_board_input.text().strip()
+        company_name = self.company_for_board_dropdown.currentText()
+
+        if company_name == "Select Company":
             QMessageBox.warning(self, "Error", "Select a company first.")
             return
-            
-        if not board_name:
+        if not board:
             QMessageBox.warning(self, "Error", "Please enter a board name.")
             return
-        
-        try:
-            self.db_manager.add_board(company_id, board_name)
-            logger.info(f"Board added: {board_name}")
-            QMessageBox.information(self, "Success", f"Board '{board_name}' added successfully!")
-            
-            self.refresh_company_tree()
-            self.refresh_dropdowns()
-            self.new_board_input.clear()
-            
-        except Exception as e:
-            logger.error(f"Failed to add board: {e}", exc_info=True)
-            QMessageBox.critical(self, "Error", f"Failed to add board:\n{str(e)}")
 
-    def edit_board(self, company_id, board_id, board_name):
-        """Edit board name"""
-        new_name, ok = QInputDialog.getText(
-            self,
-            "Edit Board",
-            "New board name:",
-            text=board_name
-        )
-        
+        try:
+            company_id = self.company_boards[company_name]['id']
+            self.db.add_board(company_id, board)
+            self.load_companies_from_db()
+            self.new_board_input.clear()
+            self.company_for_board_dropdown.setCurrentIndex(0)
+            QMessageBox.information(self, "Success", f"Board '{board}' added successfully!")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to add board: {str(e)}")
+            logger.error(f"Failed to add board: {e}", exc_info=True)
+
+    def edit_board(self, company, board):
+        new_name, ok = QInputDialog.getText(self, "Edit Board", "New name:", text=board)
         if ok and new_name.strip():
             try:
-                with self.db_manager.get_connection() as conn:
-                    conn.execute(
-                        "UPDATE boards SET board_name=? WHERE board_id=?",
-                        (new_name.strip(), board_id)
-                    )
-                    conn.commit()
-                
-                logger.info(f"Board updated: {board_name}")
-                QMessageBox.information(self, "Success", "Board updated!")
-                self.refresh_company_tree()
-                self.refresh_dropdowns()
-                
+                company_id = self.company_boards[company]['id']
+                self.db.update_board(company_id, board, new_name.strip())
+                self.load_companies_from_db()
+                QMessageBox.information(self, "Success", "Board updated successfully!")
             except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to update board: {str(e)}")
                 logger.error(f"Failed to update board: {e}", exc_info=True)
-                QMessageBox.critical(self, "Error", f"Failed to update board:\n{str(e)}")
 
     def archive_board(self, company_id, board_id, board_name):
         """Mark a board as archived"""
