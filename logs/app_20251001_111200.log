@@ -1,0 +1,56 @@
+2025-10-01 11:12:00,242 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251001_111200.log
+2025-10-01 11:12:00,242 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-01 11:12:00,524 - managers.db_manager - INFO - Seeded default admin user 'admin'
+2025-10-01 11:12:00,525 - utils.logger - INFO - Database manager initialized
+2025-10-01 11:12:00,525 - utils.logger - INFO - XLSX manager initialized
+2025-10-01 11:12:00,541 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-01 11:12:00,948 - GUI.app - INFO - Login window displayed
+2025-10-01 11:12:00,948 - utils.logger - INFO - Application controller started
+2025-10-01 11:12:00,948 - GUI.app - INFO - Starting application event loop
+2025-10-01 11:13:57,495 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-01 11:13:57,500 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-01 11:13:57,569 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-01 11:13:57,571 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-01 11:13:57,574 - GUI.admin_window - INFO - Loaded 1 users
+2025-10-01 11:13:57,576 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-01 11:13:57,608 - GUI.app - INFO - Admin window displayed for admin
+2025-10-01 11:15:39,711 - GUI.admin_window - INFO - Company added: Quantronix (cust_id=QTX)
+2025-10-01 11:15:40,983 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-01 11:15:40,986 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-01 11:15:58,700 - GUI.admin_window - INFO - Company updated for Quantronix
+2025-10-01 11:16:00,256 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-01 11:16:00,259 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-01 11:16:15,753 - managers.db_manager - ERROR - Database connection error: NOT NULL constraint failed: boards.board_path
+2025-10-01 11:16:15,753 - managers.db_manager - ERROR - Failed to add board: NOT NULL constraint failed: boards.board_path
+2025-10-01 11:16:15,753 - GUI.admin_window - ERROR - Failed to add board: NOT NULL constraint failed: boards.board_path
+Traceback (most recent call last):
+  File "C:\Users\zmcmillan\projects\LabelTracker\GUI\admin_window.py", line 1116, in add_board
+    self.db_manager.add_board(company_id, board_name)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zmcmillan\projects\LabelTracker\managers\db_manager.py", line 228, in add_board
+    query.execute(
+    ~~~~~~~~~~~~~^
+        "INSERT INTO boards (company_id, board_name) VALUES (?, ?)",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        (company_id, board_name),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+sqlite3.IntegrityError: NOT NULL constraint failed: boards.board_path
+2025-10-01 11:16:21,415 - managers.db_manager - ERROR - Database connection error: NOT NULL constraint failed: boards.board_path
+2025-10-01 11:16:21,416 - managers.db_manager - ERROR - Failed to add board: NOT NULL constraint failed: boards.board_path
+2025-10-01 11:16:21,416 - GUI.admin_window - ERROR - Failed to add board: NOT NULL constraint failed: boards.board_path
+Traceback (most recent call last):
+  File "C:\Users\zmcmillan\projects\LabelTracker\GUI\admin_window.py", line 1116, in add_board
+    self.db_manager.add_board(company_id, board_name)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zmcmillan\projects\LabelTracker\managers\db_manager.py", line 228, in add_board
+    query.execute(
+    ~~~~~~~~~~~~~^
+        "INSERT INTO boards (company_id, board_name) VALUES (?, ?)",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        (company_id, board_name),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+sqlite3.IntegrityError: NOT NULL constraint failed: boards.board_path
