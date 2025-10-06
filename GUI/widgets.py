@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QLabel, QPushButton, QLineEdit
+from PyQt5.QtCore import Qt
 import GUI.styles as styles
 
 def create_label(text: str) -> QLabel:
