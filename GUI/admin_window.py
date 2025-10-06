@@ -9,7 +9,10 @@ from PyQt5.QtWidgets import (
     QSizePolicy, QHeaderView
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
+
+# Force matplotlib backend BEFORE importing matplotlib components
+import openpyxl
 from datetime import datetime
 import os
 import GUI.styles as styles
@@ -21,9 +24,6 @@ try:
     DEFAULT_VISIBLE_ROWS = int(os.environ.get('LT_VISIBLE_ROWS', '20'))
 except Exception:
     DEFAULT_VISIBLE_ROWS = 15
-
-
-# ==================== HELPER CLASSES ====================
 
 class SidebarButton(QPushButton):
     """Custom sidebar navigation button"""
@@ -130,8 +130,6 @@ class BlockingOrdersDialog(QDialog):
             except Exception as e:
                 QMessageBox.warning(self, "Open Failed", f"Could not open file:\n{e}")
 
-
-# ==================== MAIN ADMIN WINDOW ====================
 
 class AdminWindow(QWidget):
     def __init__(self, username: str, user_id: int, db_manager, xlsx_manager, on_logout=None):
@@ -256,8 +254,6 @@ class AdminWindow(QWidget):
             self.load_all_orders()
         elif sender == self.btn_users:
             self.content_stack.setCurrentIndex(5)
-
-    # ==================== BUILD PANEL METHODS ====================
 
     def build_create_order_panel(self):
         """Build the create order content panel"""
@@ -412,6 +408,7 @@ class AdminWindow(QWidget):
         self.company_tree.setHeaderLabels(["Company", "Orders & Boards"])
         self.company_tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.company_tree.customContextMenuRequested.connect(self.open_context_menu)
+        self.company_tree.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
         panel.content_layout.addWidget(self.company_tree)
         
         return panel
@@ -441,47 +438,113 @@ class AdminWindow(QWidget):
         return panel
 
     def build_awaiting_panel(self):
-        """Build awaiting confirmation panel"""
-        panel = ContentPanel("Awaiting Confirmation")
-        
-        info = QLabel("Orders ready for admin review (all boards tested)")
+        """Build awaiting confirmation panel with order details and pie chart"""
+        panel = ContentPanel("Order Review")
+
+        # Split into two sections: order list (left) and details (right)
+        main_layout = QHBoxLayout()
+
+        # Left side - Order list
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_widget.setMinimumWidth(500)
+
+        info = QLabel("All Orders - Click to view details")
         info.setStyleSheet("color: #aaa; margin-bottom: 10px;")
-        panel.content_layout.addWidget(info)
-        
+        left_layout.addWidget(info)
+
+        # Filter buttons
+        filter_layout = QHBoxLayout()
+        self.filter_all_btn = QPushButton("All")
+        self.filter_pending_btn = QPushButton("Pending")
+        self.filter_active_btn = QPushButton("Active")
+        self.filter_complete_btn = QPushButton("Complete")
+
+        filter_buttons = [self.filter_all_btn, self.filter_pending_btn, 
+                         self.filter_active_btn, self.filter_complete_btn]
+
+        for btn in filter_buttons:
+            btn.setCheckable(True)
+            btn.setStyleSheet(styles.BUTTON_STYLE)
+            btn.clicked.connect(self.apply_order_filter)
+            filter_layout.addWidget(btn)
+
+        self.filter_all_btn.setChecked(True)
+        left_layout.addLayout(filter_layout)
+
         self.await_table = QTableWidget()
-        self.await_table.setColumnCount(6)
+        self.await_table.setColumnCount(5)
         self.await_table.setHorizontalHeaderLabels([
-            "Order ID", "Order Number", "Company", "Board", "File Path", "Status"
+            "Order ID", "Order Number", "Company", "Board", "Status"
         ])
         self.await_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.await_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.await_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.await_table.itemSelectionChanged.connect(self.on_order_selected)
         try:
             self.await_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            self.await_table.horizontalHeader().setStretchLastSection(True)
         except Exception:
             pass
-        self.await_table.setWordWrap(True)
-        self.await_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.await_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
-        panel.content_layout.addWidget(self.await_table)
-        
+        left_layout.addWidget(self.await_table)
+
+        # Right side - Order details and pie chart
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_widget.setMinimumWidth(400)
+
+        self.order_details_label = QLabel("Select an order to view details")
+        self.order_details_label.setStyleSheet("color: #64b5f6; font-size: 14pt; font-weight: bold;")
+        right_layout.addWidget(self.order_details_label)
+
+        # Order info
+        self.order_info_widget = QWidget()
+        self.order_info_layout = QVBoxLayout(self.order_info_widget)
+        self.order_number_label = QLabel()
+        self.order_company_label = QLabel()
+        self.order_board_label = QLabel()
+        self.order_total_label = QLabel()
+
+        for label in [self.order_number_label, self.order_company_label, 
+                      self.order_board_label, self.order_total_label]:
+            label.setStyleSheet("color: #ccc; font-size: 11pt; margin: 5px 0;")
+            self.order_info_layout.addWidget(label)
+
+        right_layout.addWidget(self.order_info_widget)
+        self.order_info_widget.setVisible(False)
+
+        # Pie chart
+        self.stats_widget = QWidget()
+        self.stats_layout = QVBoxLayout(self.stats_widget)
+        self.stats_widget.setStyleSheet("background-color: #1a1a2e; padding: 10px; border-radius: 8px;")
+        right_layout.addWidget(self.stats_widget)
+        self.stats_widget.setVisible(False)
+
+        # Action buttons
         btn_row = QHBoxLayout()
-        self.view_await_btn = QPushButton("View File")
+        self.view_await_btn = QPushButton("Open File")
         self.view_await_btn.clicked.connect(self.view_selected_awaiting_file)
         self.view_await_btn.setStyleSheet(styles.BUTTON_STYLE)
+        self.view_await_btn.setEnabled(False)
         btn_row.addWidget(self.view_await_btn)
-        
-        self.confirm_archive_btn = QPushButton("Confirm & Archive")
+
+        self.confirm_archive_btn = QPushButton("Mark Complete & Archive")
         self.confirm_archive_btn.clicked.connect(self.confirm_and_archive_selected)
         self.confirm_archive_btn.setStyleSheet(styles.BUTTON_STYLE)
+        self.confirm_archive_btn.setEnabled(False)
         btn_row.addWidget(self.confirm_archive_btn)
         btn_row.addStretch()
-        
-        panel.content_layout.addLayout(btn_row)
-        
-        return panel
 
+        right_layout.addLayout(btn_row)
+        right_layout.addStretch()
+
+        # Add to main layout
+        main_layout.addWidget(left_widget)
+        main_layout.addWidget(right_widget)
+
+        panel.content_layout.addLayout(main_layout)
+
+        return panel
+    
     def build_archive_panel(self):
         """Build archive panel"""
         panel = ContentPanel("Archive")
@@ -507,6 +570,20 @@ class AdminWindow(QWidget):
         orders_label = QLabel("Archived Orders")
         orders_label.setStyleSheet("color: #64b5f6; font-size: 14pt; font-weight: bold; margin-top: 10px;")
         panel.content_layout.addWidget(orders_label)
+
+        order_btn_row = QHBoxLayout()
+        restore_order_btn = QPushButton("Restore Order")
+        restore_order_btn.clicked.connect(self.restore_selected_order)
+        restore_order_btn.setStyleSheet(styles.BUTTON_STYLE)
+        order_btn_row.addWidget(restore_order_btn)
+        
+        delete_order_btn = QPushButton("Delete Order Permanently")
+        delete_order_btn.clicked.connect(self.delete_selected_order_permanently)
+        delete_order_btn.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
+        order_btn_row.addWidget(delete_order_btn)
+        order_btn_row.addStretch()
+        
+        panel.content_layout.addLayout(order_btn_row)
         
         self.archived_table = QTableWidget()
         self.archived_table.setColumnCount(6)
@@ -523,24 +600,26 @@ class AdminWindow(QWidget):
         self.archived_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
         panel.content_layout.addWidget(self.archived_table)
         
-        order_btn_row = QHBoxLayout()
-        restore_order_btn = QPushButton("Restore Order")
-        restore_order_btn.clicked.connect(self.restore_selected_order)
-        restore_order_btn.setStyleSheet(styles.BUTTON_STYLE)
-        order_btn_row.addWidget(restore_order_btn)
-        
-        delete_order_btn = QPushButton("Delete Order Permanently")
-        delete_order_btn.clicked.connect(self.delete_selected_order_permanently)
-        delete_order_btn.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
-        order_btn_row.addWidget(delete_order_btn)
-        order_btn_row.addStretch()
-        
-        panel.content_layout.addLayout(order_btn_row)
         
         boards_label = QLabel("Archived Boards")
         boards_label.setStyleSheet("color: #64b5f6; font-size: 14pt; font-weight: bold; margin-top: 5px; margin-bottom: 10px;")
         panel.content_layout.addWidget(boards_label)
-        
+
+
+
+        board_btn_row = QHBoxLayout()
+        self.restore_board_button = QPushButton("Restore Board")
+        self.restore_board_button.clicked.connect(self.restore_selected_board)
+        self.restore_board_button.setStyleSheet(styles.BUTTON_STYLE)
+        board_btn_row.addWidget(self.restore_board_button)
+
+        delete_board_btn = QPushButton("Delete Board Permanently")
+        delete_board_btn.clicked.connect(self.delete_selected_board_permanently)
+        delete_board_btn.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
+        board_btn_row.addWidget(delete_board_btn)
+        board_btn_row.addStretch()
+        panel.content_layout.addLayout(board_btn_row)
+
         self.archived_boards_table = QTableWidget()
         self.archived_boards_table.setColumnCount(3)
         self.archived_boards_table.setHorizontalHeaderLabels(["Board ID", "Board Name", "Company"])
@@ -557,24 +636,25 @@ class AdminWindow(QWidget):
         self.archived_boards_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
         panel.content_layout.addWidget(self.archived_boards_table)
         
-        board_btn_layout = QHBoxLayout()
-        self.restore_board_button = QPushButton("Restore Board")
-        self.restore_board_button.clicked.connect(self.restore_selected_board)
-        self.restore_board_button.setStyleSheet(styles.BUTTON_STYLE)
-        board_btn_layout.addWidget(self.restore_board_button)
-        
-        self.delete_board_permanent_button = QPushButton("Delete Board Permanently")
-        self.delete_board_permanent_button.clicked.connect(self.delete_selected_board_permanently)
-        self.delete_board_permanent_button.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
-        board_btn_layout.addWidget(self.delete_board_permanent_button)
-        board_btn_layout.addStretch()
-        
-        panel.content_layout.addLayout(board_btn_layout)
         
         companies_label = QLabel("Archived Companies")
         companies_label.setStyleSheet("color: #64b5f6; font-size: 14pt; font-weight: bold; margin-top: 20px;")
         panel.content_layout.addWidget(companies_label)
         
+        comp_btn_layout = QHBoxLayout()
+        self.restore_company_button = QPushButton("Restore Company")
+        self.restore_company_button.clicked.connect(self.restore_selected_company)
+        self.restore_company_button.setStyleSheet(styles.BUTTON_STYLE)
+        comp_btn_layout.addWidget(self.restore_company_button)
+        
+        self.delete_company_permanent_button = QPushButton("Delete Company Permanently")
+        self.delete_company_permanent_button.clicked.connect(self.delete_selected_company_permanently)
+        self.delete_company_permanent_button.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
+        comp_btn_layout.addWidget(self.delete_company_permanent_button)
+        comp_btn_layout.addStretch()
+        
+        panel.content_layout.addLayout(comp_btn_layout)
+
         self.archived_companies_table = QTableWidget()
         self.archived_companies_table.setColumnCount(3)
         self.archived_companies_table.setHorizontalHeaderLabels(["Company ID", "Company Name", "Client Path"])
@@ -591,19 +671,6 @@ class AdminWindow(QWidget):
         self.archived_companies_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
         panel.content_layout.addWidget(self.archived_companies_table)
         
-        comp_btn_layout = QHBoxLayout()
-        self.restore_company_button = QPushButton("Restore Company")
-        self.restore_company_button.clicked.connect(self.restore_selected_company)
-        self.restore_company_button.setStyleSheet(styles.BUTTON_STYLE)
-        comp_btn_layout.addWidget(self.restore_company_button)
-        
-        self.delete_company_permanent_button = QPushButton("Delete Company Permanently")
-        self.delete_company_permanent_button.clicked.connect(self.delete_selected_company_permanently)
-        self.delete_company_permanent_button.setStyleSheet(styles.BUTTON_LOGOUT_STYLE)
-        comp_btn_layout.addWidget(self.delete_company_permanent_button)
-        comp_btn_layout.addStretch()
-        
-        panel.content_layout.addLayout(comp_btn_layout)
         
         return panel
 
@@ -665,9 +732,6 @@ class AdminWindow(QWidget):
         
         return panel
 
-    # ==================== BUSINESS LOGIC METHODS ====================
-    # (All your existing methods follow - they remain exactly the same)
-    
     def load_initial_data(self):
         """Load all data from database on startup"""
         try:
@@ -688,9 +752,6 @@ class AdminWindow(QWidget):
         except Exception as e:
             logger.error(f"Error during logout: {e}", exc_info=True)
 
-    # ... (All remaining methods from your original file go here)
-    # I'm truncating for space but you should include ALL methods:
-    # - refresh_dropdowns, on
     def refresh_dropdowns(self):
         """Refresh company and board dropdowns from database"""
         try:
@@ -748,6 +809,98 @@ class AdminWindow(QWidget):
                         self.cust_code_input.setText(str(cust_id))
             except Exception as e:
                 logger.error(f"Failed to load boards: {e}", exc_info=True)
+
+    def on_order_selected(self):
+        """Handle order selection - show details and pie chart"""
+        row = self.await_table.currentRow()
+        if row < 0:
+            self.order_info_widget.setVisible(False)
+            self.stats_widget.setVisible(False)
+            self.view_await_btn.setEnabled(False)
+            self.confirm_archive_btn.setEnabled(False)
+            self.order_details_label.setText("Select an order to view details")
+            return
+        
+        try:
+            order_id = int(self.await_table.item(row, 0).text())
+            order_number = self.await_table.item(row, 1).text()
+            company = self.await_table.item(row, 2).text()
+            board = self.await_table.item(row, 3).text()
+            
+            # Get file path
+            orders = self.db_manager.get_orders()
+            order = next((o for o in orders if o[0] == order_id), None)
+            if not order:
+                return
+            
+            file_path = order[5]
+            
+            # Calculate status
+            status_str, pass_count, fail_count, pending_count, total_count = self.calculate_order_status(file_path)
+            
+            # Update labels
+            self.order_details_label.setText(f"Order Details: {order_number}")
+            self.order_number_label.setText(f"Order #: {order_number}")
+            self.order_company_label.setText(f"Company: {company}")
+            self.order_board_label.setText(f"Board: {board}")
+            self.order_total_label.setText(f"Total Quantity: {total_count}")
+            
+            self.order_info_widget.setVisible(True)
+            self.view_await_btn.setEnabled(True)
+            self.confirm_archive_btn.setEnabled(status_str == "Complete")
+            
+            # Draw pie chart
+            self.draw_pie_chart(pass_count, fail_count, pending_count)
+            
+        except Exception as e:
+            logger.error(f"Failed to display order details: {e}", exc_info=True)
+    
+    def draw_pie_chart(self, pass_count, fail_count, pending_count):
+        """Display pass/fail/pending statistics"""
+        # Clear previous widgets
+        while self.stats_layout.count():
+            child = self.stats_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        total = pass_count + fail_count + pending_count
+
+        if total == 0:
+            no_data = QLabel("No data available")
+            no_data.setStyleSheet("color: #aaa; font-size: 14pt;")
+            no_data.setAlignment(Qt.AlignCenter)
+            self.stats_layout.addWidget(no_data)
+            self.stats_widget.setVisible(True)
+            return
+
+        # Title
+        title = QLabel("Order Statistics")
+        title.setStyleSheet("color: #64b5f6; font-size: 16pt; font-weight: bold; margin-bottom: 20px;")
+        self.stats_layout.addWidget(title)
+
+        # Pass
+        if pass_count > 0:
+            pct = (pass_count / total) * 100
+            pass_label = QLabel(f"✓ Pass: {pass_count} ({pct:.1f}%)")
+            pass_label.setStyleSheet("color: #4CAF50; font-size: 14pt; font-weight: bold; margin: 10px;")
+            self.stats_layout.addWidget(pass_label)
+
+        # Fail
+        if fail_count > 0:
+            pct = (fail_count / total) * 100
+            fail_label = QLabel(f"✗ Fail: {fail_count} ({pct:.1f}%)")
+            fail_label.setStyleSheet("color: #F44336; font-size: 14pt; font-weight: bold; margin: 10px;")
+            self.stats_layout.addWidget(fail_label)
+
+        # Pending
+        if pending_count > 0:
+            pct = (pending_count / total) * 100
+            pending_label = QLabel(f"⏳ Pending: {pending_count} ({pct:.1f}%)")
+            pending_label.setStyleSheet("color: #FFC107; font-size: 14pt; font-weight: bold; margin: 10px;")
+            self.stats_layout.addWidget(pending_label)
+
+        self.stats_layout.addStretch()
+        self.stats_widget.setVisible(True)
 
     def refresh_company_tree(self):
         """Refresh company/board tree from database"""
@@ -1014,7 +1167,7 @@ class AdminWindow(QWidget):
         client_path = QFileDialog.getExistingDirectory(
             self,
             "Select Client Storage Path",
-            "P:/EMS Testing & Repair/clients"
+            "P:/Label Tracking"
         )
         
         if not client_path:
@@ -1112,9 +1265,18 @@ class AdminWindow(QWidget):
             QMessageBox.warning(self, "Error", "Please enter a board name.")
             return
         
+        board_path = QFileDialog.getExistingDirectory(
+            self,
+            "Select Board/Part number Path",
+            f"P:/Label Tracking/{company_id}"
+        )
+
+        if not board_path:
+            return
+
         try:
-            self.db_manager.add_board(company_id, board_name)
-            logger.info(f"Board added: {board_name}")
+            self.db_manager.add_board(company_id, board_name, board_path)
+            logger.info(f"Board: {board_name} added with path {board_path}")
             QMessageBox.information(self, "Success", f"Board '{board_name}' added successfully!")
             
             self.refresh_company_tree()
@@ -1192,6 +1354,87 @@ class AdminWindow(QWidget):
         except Exception as e:
             logger.error(f"Failed to load orders: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Failed to load orders:\n{str(e)}")
+
+    def load_awaiting_confirmation_orders(self):
+        """Load all orders with calculated status"""
+        try:
+            self.await_table.setRowCount(0)
+            orders = self.db_manager.get_orders()
+
+            companies = {c[0]: c[1] for c in self.db_manager.get_companies()}
+            boards = {}
+            for company_id in companies:
+                for b in self.db_manager.get_boards_by_company(company_id):
+                    board_id = b[0]
+                    board_name = b[1]
+                    archived = b[2] if len(b) > 2 else 0
+                    if archived:
+                        continue
+                    boards[board_id] = board_name
+            
+            row_idx = 0
+            for order in orders:
+                order_id, order_number, company_id, board_id, db_status, file_path, created_at, created_by = order
+
+                if db_status == "Archived":
+                    continue  # Skip archived orders
+
+                status_str, pass_count, fail_count, pending_count, total_count = self.calculate_order_status(file_path)
+
+                company_name = companies.get(company_id, "Unknown")
+                board_name = boards.get(board_id, "N/A") if board_id else "N/A"
+
+                self.await_table.insertRow(row_idx)
+                self.await_table.setItem(row_idx, 0, QTableWidgetItem(str(order_id)))
+                self.await_table.setItem(row_idx, 1, QTableWidgetItem(order_number))
+                self.await_table.setItem(row_idx, 2, QTableWidgetItem(company_name))
+                self.await_table.setItem(row_idx, 3, QTableWidgetItem(board_name))
+
+                status_item = QTableWidgetItem(status_str)
+                if status_str == "Complete - All Pass":
+                    status_item.setForeground(QColor("green"))
+                    status_item.setFont(QFont("", weight=QFont.Bold))
+                elif status_str == "Active":
+                    status_item.setForeground(QColor("blue"))
+                    status_item.setFont(QFont("", weight=QFont.Bold))
+                elif status_str == "Pending":
+                    status_item.setForeground(QColor("yellow"))
+                    status_item.setFont(QFont("", weight=QFont.Bold))
+
+                self.await_table.setItem(row_idx, 4, status_item)
+                row_idx += 1
+            logger.info(f"Loaded {row_idx} awaiting confirmation orders")
+        except Exception as e:
+            logger.error(f"Failed to load awaiting confirmation orders: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to load orders:\n{str(e)}")
+        
+        finally:
+            try:
+                self.await_table.resizeRowsToContents()
+            except Exception:
+                logger.exception("Failed to resize await table rows")
+                pass
+
+    def apply_order_filter(self):
+        """Filter Orders based on seleted status"""
+        sender = self.sender()
+
+        filter_buttons = [self.filter_all_btn, self.filter_pending_btn, self.filter_active_btn, self.filter_complete_btn]
+        for btn in filter_buttons:
+            if btn != sender:
+                btn.setChecked(False)
+        
+        sender.setChecked(True)
+
+        filter_text = sender.text()
+
+        for row in range(self.await_table.rowCount()):
+            status_item = self.await_table.item(row, 4)
+            if filter_text == "All":
+                self.await_table.setRowHidden(row, False)
+            else:
+                status = status_item.text() if status_item else ""
+                self.await_table.setRowHidden(row, status != filter_text)
 
     def search_archived_orders(self):
         """Search orders by order number or company"""
@@ -1457,43 +1700,58 @@ class AdminWindow(QWidget):
             QMessageBox.critical(self, "Error", f"Failed to delete company: {e}")
 
     def load_awaiting_confirmation_orders(self):
-        """Scan orders and find those ready for admin confirmation"""
+        """Load all orders with calculated status"""
         try:
             self.await_table.setRowCount(0)
             orders = self.db_manager.get_orders()
+
+            companies = {c[0]: c[1] for c in self.db_manager.get_companies()}
+            boards = {}
+            for company_id in companies:
+                for b in self.db_manager.get_boards_by_company(company_id):
+                    board_id = b[0]
+                    board_name = b[1]
+                    boards[board_id] = board_name
+
             row_idx = 0
             for order in orders:
-                order_id, order_number, company_id, board_id, status, file_path, created_at, created_by = order
-                if status == 'Archived':
-                    continue
-                try:
-                    ready = self.xlsx_manager.is_order_ready_for_confirmation(file_path)
-                except Exception:
-                    ready = False
-                if ready:
-                    company_name = next((c[1] for c in self.db_manager.get_companies() if c[0] == company_id), "Unknown")
-                    board_name = "N/A"
-                    if board_id:
-                        boards = self.db_manager.get_boards_by_company(company_id)
-                        board_name = next((b[1] for b in boards if b[0] == board_id), "N/A")
+                order_id, order_number, company_id, board_id, db_status, file_path, created_at, created_by = order
 
-                    self.await_table.insertRow(row_idx)
-                    self.await_table.setItem(row_idx, 0, QTableWidgetItem(str(order_id)))
-                    self.await_table.setItem(row_idx, 1, QTableWidgetItem(order_number))
-                    self.await_table.setItem(row_idx, 2, QTableWidgetItem(company_name))
-                    self.await_table.setItem(row_idx, 3, QTableWidgetItem(board_name))
-                    self.await_table.setItem(row_idx, 4, QTableWidgetItem(file_path or ""))
-                    self.await_table.setItem(row_idx, 5, QTableWidgetItem(str(status)))
-                    row_idx += 1
+                # Skip archived orders
+                if db_status == 'Archived':
+                    continue
+                
+                # Calculate actual status from file
+                status_str, pass_count, fail_count, pending_count, total_count = self.calculate_order_status(file_path)
+
+                company_name = companies.get(company_id, "Unknown")
+                board_name = boards.get(board_id, "N/A") if board_id else "N/A"
+
+                self.await_table.insertRow(row_idx)
+                self.await_table.setItem(row_idx, 0, QTableWidgetItem(str(order_id)))
+                self.await_table.setItem(row_idx, 1, QTableWidgetItem(order_number))
+                self.await_table.setItem(row_idx, 2, QTableWidgetItem(company_name))
+                self.await_table.setItem(row_idx, 3, QTableWidgetItem(board_name))
+
+                # Color code status
+                status_item = QTableWidgetItem(status_str)
+                if status_str == "Complete":
+                    status_item.setForeground(QColor("green"))
+                    status_item.setFont(QFont("", weight=QFont.Bold))
+                elif status_str == "Active":
+                    status_item.setForeground(QColor("#ccc"))
+                    status_item.setFont(QFont("", weight=QFont.Bold))
+                elif status_str == "Pending":
+                    status_item.setForeground(QColor("orange"))
+                    status_item.setFont(QFont("", weight=QFont.Bold))
+
+                self.await_table.setItem(row_idx, 4, status_item)
+                row_idx += 1
+
         except Exception as e:
-            logger.error(f"Failed to load awaiting confirmation orders: {e}", exc_info=True)
+            logger.error(f"Failed to load orders: {e}", exc_info=True)
         finally:
             try:
-                fm = self.await_table.fontMetrics()
-                default_h = int(fm.height() * 1.3)
-                if default_h < 18:
-                    default_h = 18
-                self.await_table.verticalHeader().setDefaultSectionSize(default_h)
                 self.await_table.resizeRowsToContents()
             except Exception:
                 pass
@@ -1508,43 +1766,109 @@ class AdminWindow(QWidget):
             return None
 
     def view_selected_awaiting_file(self):
+        """Open the selected order's XLSX file"""
         row = self.await_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "No selection", "Please select an order first.")
             return
-        file_path = self.await_table.item(row, 4).text()
-        if not file_path:
-            QMessageBox.warning(self, "No file", "Selected order has no file recorded.")
-            return
-        import os
+
         try:
+            order_id = int(self.await_table.item(row, 0).text())
+            orders = self.db_manager.get_orders()
+            order = next((o for o in orders if o[0] == order_id), None)
+
+            if not order or not order[5]:
+                QMessageBox.warning(self, "No file", "Selected order has no file recorded.")
+                return
+
+            file_path = order[5]
+
             if os.path.exists(file_path):
                 os.startfile(file_path)
             else:
                 QMessageBox.warning(self, "File not found", f"File not found:\n{file_path}")
         except Exception as e:
+            logger.error(f"Failed to open file: {e}")
             QMessageBox.warning(self, "Open Failed", f"Could not open file:\n{e}")
-
+        
     def confirm_and_archive_selected(self):
-        order_id = self.get_selected_awaiting_order_id()
-        if not order_id:
+        """Archive selected order (only enabled for Complete orders)"""
+        row = self.await_table.currentRow()
+        if row < 0:
             QMessageBox.warning(self, "No selection", "Please select an order first.")
             return
-        ok = QMessageBox.question(self, "Confirm & Archive", 
-                                  "Confirm that the XLSX looks correct and archive the order?", 
-                                  QMessageBox.Yes | QMessageBox.No)
-        if ok != QMessageBox.Yes:
-            return
-        try:
-            self.db_manager.archive_order(order_id)
-            QMessageBox.information(self, "Archived", "Order archived and moved to Archive tab.")
-            self.load_awaiting_confirmation_orders()
-            self.load_all_orders()
-            self.refresh_company_tree()
-        except Exception as e:
-            logger.error(f"Failed to confirm & archive order: {e}", exc_info=True)
-            QMessageBox.critical(self, "Error", f"Failed to archive order:\n{e}")
 
+        try:
+            order_id = int(self.await_table.item(row, 0).text())
+            order_number = self.await_table.item(row, 1).text()
+
+            ok = QMessageBox.question(
+                self, 
+                "Confirm & Archive", 
+                f"Archive order {order_number}?\n\nThis will mark it as complete.",
+                QMessageBox.Yes | QMessageBox.No
+            )
+
+            if ok != QMessageBox.Yes:
+                return
+
+            self.db_manager.archive_order(order_id)
+            QMessageBox.information(self, "Archived", "Order archived successfully.")
+            self.load_awaiting_confirmation_orders()
+            self.on_order_selected()  # Refresh details panel
+
+        except Exception as e:
+            logger.error(f"Failed to archive order: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to archive order:\n{e}")
+    
+    def calculate_order_status(self, file_path):
+        """
+        Calculate order status based on XLSX contents
+        Returns: (status_string, pass_count, fail_count, pending_count, total_count)
+        """
+        if not file_path or not os.path.exists(file_path):
+            return ("Unknown", 0, 0, 0, 0)
+
+        try:
+            wb = openpyxl.load_workbook(file_path, read_only=True)
+            ws = wb.active
+
+            pass_count = 0
+            fail_count = 0
+            pending_count = 0
+            total_count = 0
+
+            # Skip header row, start from row 2
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row or len(row) < 5:
+                    continue
+                
+                total_count += 1
+                status = str(row[4]).strip().lower() if row[4] else "pending"
+
+                if status == "pass":
+                    pass_count += 1
+                elif status == "fail":
+                    fail_count += 1
+                else:
+                    pending_count += 1
+
+            wb.close()
+
+            # Determine overall status
+            if pending_count == total_count:
+                status_str = "Pending"
+            elif pass_count == total_count:
+                status_str = "Complete"
+            else:
+                status_str = "Active"
+
+            return (status_str, pass_count, fail_count, pending_count, total_count)
+
+        except Exception as e:
+            logger.error(f"Failed to calculate order status: {e}")
+            return ("Error", 0, 0, 0, 0)
+     
     def load_users(self):
         """Load all users from database"""
         try:

@@ -64,6 +64,8 @@ class DatabaseManager:
                     board_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     company_id INTEGER NOT NULL,
                     board_name TEXT NOT NULL,
+                    board_path TEXT NOT NULL,
+                    archived INTEGER NOT NULL DEFAULT 0,
                     FOREIGN KEY (company_id) REFERENCES companies(company_id) ON DELETE CASCADE
                 )""")
 
@@ -158,6 +160,9 @@ class DatabaseManager:
                     (company_name, client_path, cust_id),
                 )
                 conn.commit()
+
+            if not os.path.exists(client_path):
+                os.makedirs(client_path, exist_ok=True)
         except Exception as e:
             logger.error(f"Failed to add company: {e}")
             raise
@@ -221,19 +226,24 @@ class DatabaseManager:
             raise
 
     # ---------------- Board methods ----------------
-    def add_board(self, company_id, board_name):
+    def add_board(self, company_id, board_name, board_path):
+        if not board_path:
+            board_path = ""
         try:
             with self.get_connection() as conn:
                 query = conn.cursor()
-                query.execute(
-                    "INSERT INTO boards (company_id, board_name) VALUES (?, ?)",
-                    (company_id, board_name),
+                query.execute("" \
+                "INSERT INTO boards (company_id, board_name, board_path) VALUES (?, ?, ?)",
+                    (company_id, board_name, board_path),
                 )
                 conn.commit()
+            if not os.path.exists(board_path):
+                os.makedirs(board_path, exist_ok=True)
+
         except Exception as e:
             logger.error(f"Failed to add board: {e}")
             raise
-
+        
     def get_boards_by_company(self, company_id):
         try:
             with self.get_connection() as conn:

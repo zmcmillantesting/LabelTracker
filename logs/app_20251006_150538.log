@@ -1,0 +1,68 @@
+2025-10-06 15:05:38,389 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251006_150538.log
+2025-10-06 15:05:38,389 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-06 15:05:38,401 - utils.logger - INFO - Database manager initialized
+2025-10-06 15:05:38,401 - utils.logger - INFO - XLSX manager initialized
+2025-10-06 15:05:38,415 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-06 15:05:38,766 - GUI.app - INFO - Login window displayed
+2025-10-06 15:05:38,766 - utils.logger - INFO - Application controller started
+2025-10-06 15:05:38,766 - GUI.app - INFO - Starting application event loop
+2025-10-06 15:05:42,437 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-06 15:05:42,442 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-06 15:05:42,526 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-06 15:05:42,531 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-06 15:05:42,535 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-06 15:05:42,563 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-06 15:05:42,591 - GUI.app - INFO - Admin window displayed for admin
+2025-10-06 15:06:12,697 - GUI.admin_window - INFO - Order 2345.1 created with 5 serial numbers
+2025-10-06 15:06:53,798 - GUI.admin_window - INFO - Order 3456.1 created with 15 serial numbers
+2025-10-06 15:07:14,382 - GUI.app - INFO - Login window displayed
+2025-10-06 15:07:18,823 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-06 15:07:18,828 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-06 15:07:18,890 - GUI.app - INFO - User window displayed for test
+2025-10-06 15:07:23,481 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-06 15:07:23,483 - GUI.standard_user_window - INFO - Order 1234.1 loaded successfully
+2025-10-06 15:07:32,909 - GUI.standard_user_window - INFO - Loaded 5 serial numbers from XLSX
+2025-10-06 15:07:32,910 - GUI.standard_user_window - INFO - Order 2345.1 loaded successfully
+2025-10-06 15:07:35,953 - GUI.standard_user_window - INFO - XLSX file updated for SN: EXB-2345.1-00001
+2025-10-06 15:07:35,953 - GUI.standard_user_window - INFO - SN EXB-2345.1-00001 submitted: Pass
+2025-10-06 15:07:35,968 - GUI.standard_user_window - INFO - Loaded 5 serial numbers from XLSX
+2025-10-06 15:07:37,507 - GUI.standard_user_window - INFO - XLSX file updated for SN: EXB-2345.1-00002
+2025-10-06 15:07:37,507 - GUI.standard_user_window - INFO - SN EXB-2345.1-00002 submitted: Pass
+2025-10-06 15:07:37,522 - GUI.standard_user_window - INFO - Loaded 5 serial numbers from XLSX
+2025-10-06 15:07:39,113 - GUI.standard_user_window - INFO - XLSX file updated for SN: EXB-2345.1-00003
+2025-10-06 15:07:39,114 - GUI.standard_user_window - INFO - SN EXB-2345.1-00003 submitted: Pass
+2025-10-06 15:07:39,131 - GUI.standard_user_window - INFO - Loaded 5 serial numbers from XLSX
+2025-10-06 15:07:40,487 - GUI.standard_user_window - INFO - XLSX file updated for SN: EXB-2345.1-00004
+2025-10-06 15:07:40,488 - GUI.standard_user_window - INFO - SN EXB-2345.1-00004 submitted: Pass
+2025-10-06 15:07:40,503 - GUI.standard_user_window - INFO - Loaded 5 serial numbers from XLSX
+2025-10-06 15:07:42,143 - GUI.standard_user_window - INFO - XLSX file updated for SN: EXB-2345.1-00005
+2025-10-06 15:07:42,143 - GUI.standard_user_window - INFO - SN EXB-2345.1-00005 submitted: Pass
+2025-10-06 15:07:42,158 - GUI.standard_user_window - INFO - Loaded 5 serial numbers from XLSX
+2025-10-06 15:07:49,472 - GUI.standard_user_window - INFO - Loaded 15 serial numbers from XLSX
+2025-10-06 15:07:49,474 - GUI.standard_user_window - INFO - Order 3456.1 loaded successfully
+2025-10-06 15:07:54,896 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-06 15:07:54,898 - GUI.standard_user_window - INFO - Order 1234.1 loaded successfully
+2025-10-06 15:07:57,486 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX-1234.1-00001
+2025-10-06 15:07:57,486 - GUI.standard_user_window - INFO - SN QTX-1234.1-00001 submitted: Pass
+2025-10-06 15:07:57,504 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-06 15:07:58,679 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX-1234.1-00002
+2025-10-06 15:07:58,684 - GUI.standard_user_window - INFO - SN QTX-1234.1-00002 submitted: Pass
+2025-10-06 15:07:58,700 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-06 15:07:59,915 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX-1234.1-00003
+2025-10-06 15:07:59,916 - GUI.standard_user_window - INFO - SN QTX-1234.1-00003 submitted: Pass
+2025-10-06 15:07:59,930 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-06 15:08:07,952 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX-1234.1-00004
+2025-10-06 15:08:07,953 - GUI.standard_user_window - INFO - SN QTX-1234.1-00004 submitted: Fail
+2025-10-06 15:08:07,967 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-06 15:08:16,697 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX-1234.1-00005
+2025-10-06 15:08:16,698 - GUI.standard_user_window - INFO - SN QTX-1234.1-00005 submitted: Fail
+2025-10-06 15:08:16,715 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-06 15:08:21,722 - GUI.app - INFO - Login window displayed
+2025-10-06 15:08:24,989 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-06 15:08:24,995 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-06 15:08:25,063 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-06 15:08:25,065 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-06 15:08:25,067 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-06 15:08:25,096 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-06 15:08:25,114 - GUI.app - INFO - Admin window displayed for admin
+2025-10-06 15:10:06,449 - GUI.admin_window - INFO - Loaded 3 orders

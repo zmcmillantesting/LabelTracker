@@ -1,0 +1,16 @@
+2025-10-06 16:19:20,930 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251006_161920.log
+2025-10-06 16:19:20,930 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-06 16:19:20,946 - utils.logger - INFO - Database manager initialized
+2025-10-06 16:19:20,946 - utils.logger - INFO - XLSX manager initialized
+2025-10-06 16:19:20,960 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-06 16:19:21,315 - GUI.app - INFO - Login window displayed
+2025-10-06 16:19:21,315 - utils.logger - INFO - Application controller started
+2025-10-06 16:19:21,315 - GUI.app - INFO - Starting application event loop
+2025-10-06 16:19:25,117 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-06 16:19:25,123 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-06 16:19:25,210 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-06 16:19:25,212 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-06 16:19:25,215 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-06 16:19:25,262 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-06 16:19:25,285 - GUI.app - INFO - Admin window displayed for admin
+2025-10-06 16:19:26,559 - GUI.admin_window - INFO - Loaded 4 orders

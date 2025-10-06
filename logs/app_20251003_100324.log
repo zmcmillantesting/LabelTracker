@@ -1,0 +1,30 @@
+2025-10-03 10:03:24,100 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251003_100324.log
+2025-10-03 10:03:24,100 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-03 10:03:24,121 - utils.logger - INFO - Database manager initialized
+2025-10-03 10:03:24,121 - utils.logger - INFO - XLSX manager initialized
+2025-10-03 10:03:24,138 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-03 10:03:24,912 - GUI.app - INFO - Login window displayed
+2025-10-03 10:03:24,912 - utils.logger - INFO - Application controller started
+2025-10-03 10:03:24,914 - GUI.app - INFO - Starting application event loop
+2025-10-03 10:03:32,590 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-03 10:03:32,598 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-03 10:03:32,748 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-03 10:03:32,751 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-03 10:03:32,753 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-03 10:03:32,874 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-03 10:03:32,924 - GUI.app - INFO - Admin window displayed for admin
+2025-10-03 10:04:29,537 - GUI.admin_window - INFO - Order 5647.1 created with 10 serial numbers
+2025-10-03 10:04:33,955 - GUI.app - INFO - Login window displayed
+2025-10-03 10:04:41,778 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-03 10:04:41,783 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-03 10:04:41,848 - GUI.app - INFO - User window displayed for test
+2025-10-03 10:04:49,432 - GUI.standard_user_window - WARNING - Order not found: 4657.1
+2025-10-03 10:04:54,135 - GUI.standard_user_window - WARNING - Order not found: 4567.1
+2025-10-03 10:04:56,618 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-03 10:04:56,620 - GUI.standard_user_window - INFO - Order 1234.1 loaded successfully
+2025-10-03 10:05:20,622 - GUI.standard_user_window - INFO - XLSX file updated for SN: EXB-1234.1-00001
+2025-10-03 10:05:20,623 - GUI.standard_user_window - INFO - SN EXB-1234.1-00001 submitted: Fail
+2025-10-03 10:05:20,639 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-03 10:05:43,808 - GUI.standard_user_window - INFO - XLSX file updated for SN: EXB-1234.1-00001
+2025-10-03 10:05:43,809 - GUI.standard_user_window - INFO - SN EXB-1234.1-00001 submitted: Pass
+2025-10-03 10:05:43,826 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
