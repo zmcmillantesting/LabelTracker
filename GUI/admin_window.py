@@ -285,6 +285,11 @@ class AdminWindow(QWidget):
         self.output_path_input.setPlaceholderText("Optional: defaults to company path")
         left_col.addWidget(self.output_path_input)
 
+        self.browse_output_button = QPushButton("Browse")
+        self.browse_output_button.clicked.connect(self.browse_output_path)
+        self.browse_output_button.setStyleSheet(styles.BUTTON_STYLE)
+        left_col.addWidget(self.browse_output_button)
+
         # Right column
         right_col.addWidget(QLabel("Part Number"))
         self.board_dropdown = QComboBox()
@@ -304,10 +309,11 @@ class AdminWindow(QWidget):
         self.cust_code_input.returnPressed.connect(self.create_order)
         right_col.addWidget(self.cust_code_input)
 
-        self.browse_output_button = QPushButton("Browse")
-        self.browse_output_button.clicked.connect(self.browse_output_path)
-        self.browse_output_button.setStyleSheet(styles.BUTTON_LINK_STYLE)
-        right_col.addWidget(self.browse_output_button)
+        right_col.addWidget(QLabel("Serialized Prefix"))
+        self.prefix_input = QLineEdit()
+        self.prefix_input.setPlaceholderText("EXA-123456-")
+        self.prefix_input.returnPressed.connect(self.create_order)
+        right_col.addWidget(self.prefix_input)
 
         left_widget = QWidget()
         left_widget.setLayout(left_col)
@@ -1032,19 +1038,26 @@ class AdminWindow(QWidget):
         total = self.total_boards_input.text().strip()
 
         board_name = None
-        with self.db_manager.get_connection() as conn:
-            query = conn.cursor()
-            board_name = query.execute("SELECT board_name FROM boards WHERE board_id=?", (board_id,))   
-            conn.close()       
-        
+        try:
+            with self.db_manager.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("SELECT board_name FROM boards WHERE board_id=?", (board_id,))
+                result = query.fetchone()
+                if result:
+                    board_name = result[0]
+        except Exception as e:
+            logger.error(f"Failed to fetch board name: {e}", exc_info=True)
+            QMessageBox.critical(self, "Error", f"Failed to fetch board name:\n{str(e)}")
+            return
+
         if not company_id:
             QMessageBox.warning(self, "Error", "Please select a company.")
             return
-            
+
         if not total.isdigit() or int(total) <= 0:
             QMessageBox.warning(self, "Error", "Total boards must be a positive number.")
             return
-        
+
         order_number = self.order_number_input.text().strip()
         if not order_number:
             QMessageBox.warning(self, "Error", "Please enter an order number.")
@@ -1067,11 +1080,14 @@ class AdminWindow(QWidget):
 
         try:
             cust_code = self.cust_code_input.text().strip() or None
+            serial_prefix = self.prefix_input.text().strip() or None
+            if not serial_prefix.endswith('-'):
+                serial_prefix += '-'
+                
             if cust_code:
                 cust_code = cust_code.upper()
 
-            serial_prefix = None
-            if cust_code:
+            if cust_code and board_name:
                 serial_prefix = f"{cust_code}-{board_name}-{order_number}-"
 
             file_path, count = self.xlsx_manager.create_order_file(
@@ -1115,6 +1131,19 @@ class AdminWindow(QWidget):
         board_id = self.board_dropdown.currentData()
         total = self.total_boards_input.text().strip()
 
+        board_name = None
+        try:
+            with self.db_manager.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("SELECT board_name FROM boards WHERE board_id=?", (board_id,))
+                result = query.fetchone()
+                if result:
+                    board_name = result[0]
+        except Exception as e:
+            logger.error(f"Failed to preview order with correct SN:  {e}")
+            raise
+
+
         if not company_id:
             QMessageBox.warning(self, "Error", "Please select a company to preview.")
             return
@@ -1130,7 +1159,7 @@ class AdminWindow(QWidget):
 
         serial_prefix = None
         if cust_code:
-            serial_prefix = f"{cust_code}-{order_number}-"
+            serial_prefix = f"{cust_code}-{board_name}-{order_number}-"
 
         serials = self.xlsx_manager._generate_serial_numbers(prefix=serial_prefix, start=1, count=int(total))
 

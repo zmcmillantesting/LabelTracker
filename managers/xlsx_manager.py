@@ -11,7 +11,7 @@ class XLSXManager:
         self.db = db
 
     #TODO: update parameters to match user input from UI when implemented
-    def _generate_serial_numbers(self, prefix=None, start=1, count=100):
+    def _generate_serial_numbers(self, prefix=None, start=1, count=1000):
         """Generate serial numbers. If prefix is None, use default placeholder prefix.
         Serial format: {prefix}{sequence:05d}
         """
