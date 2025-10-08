@@ -1030,6 +1030,12 @@ class AdminWindow(QWidget):
         company_id = self.company_dropdown.currentData()
         board_id = self.board_dropdown.currentData()
         total = self.total_boards_input.text().strip()
+
+        board_name = None
+        with self.db_manager.get_connection() as conn:
+            query = conn.cursor()
+            board_name = query.execute("SELECT board_name FROM boards WHERE board_id=?", (board_id,))   
+            conn.close()       
         
         if not company_id:
             QMessageBox.warning(self, "Error", "Please select a company.")
@@ -1066,7 +1072,7 @@ class AdminWindow(QWidget):
 
             serial_prefix = None
             if cust_code:
-                serial_prefix = f"{cust_code}-{order_number}-"
+                serial_prefix = f"{cust_code}-{board_name}-{order_number}-"
 
             file_path, count = self.xlsx_manager.create_order_file(
                 order_number=order_number,
@@ -1340,7 +1346,7 @@ class AdminWindow(QWidget):
         """Load all orders from database"""
         try:
             orders = self.db_manager.get_orders()
-            self.populate_archive_table(orders)
+            self.populate_archive_orders(orders)
             try:
                 self.populate_archived_boards()
                 try:
@@ -1468,36 +1474,40 @@ class AdminWindow(QWidget):
                     search_term in board_name.lower()):
                     filtered_orders.append(order)
             
-            self.populate_archive_table(filtered_orders)
+            self.populate_archive_orders(filtered_orders)
             logger.info(f"Search found {len(filtered_orders)} orders")
             
         except Exception as e:
             logger.error(f"Failed to search orders: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Failed to search:\n{str(e)}")
 
-    def populate_archive_table(self, orders):
+    def populate_archive_orders(self, orders):
         """Populate the archive table with orders"""
+        self.archived_boards_table.clearContents()
         self.archived_table.setRowCount(0)
         
         try:
-            companies = {c[0]: c[1] for c in self.db_manager.get_companies()}
-            boards = {}
-            for company_id in companies:
-                for b in self.db_manager.get_boards_by_company(company_id):
-                    board_id = b[0]
-                    board_name = b[1]
-                    boards[board_id] = board_name
+            archived_orders = self.db_manager.get_archived_orders()
+            if not archived_orders:
+                return 
             
-            for row_idx, order in enumerate(orders):
+            
+            for row_idx, order in enumerate(archived_orders):
+                self.archived_table.insertRow(row_idx)
                 order_id, order_number, company_id, board_id, status, file_path, created_at, created_by = order
 
-                self.archived_table.insertRow(row_idx)
+                if status != "Archived":
+                    continue
+
                 self.archived_table.setItem(row_idx, 0, QTableWidgetItem(str(order_id)))
                 self.archived_table.setItem(row_idx, 1, QTableWidgetItem(order_number))
-                self.archived_table.setItem(row_idx, 2, QTableWidgetItem(companies.get(company_id, "Unknown")))
-                self.archived_table.setItem(row_idx, 3, QTableWidgetItem(boards.get(board_id, "N/A") if board_id else "N/A"))
+                self.archived_table.setItem(row_idx, 2, QTableWidgetItem(str(company_id)))
+                self.archived_table.setItem(row_idx, 3, QTableWidgetItem(str(board_id)))
                 self.archived_table.setItem(row_idx, 4, QTableWidgetItem(status))
-                self.archived_table.setItem(row_idx, 5, QTableWidgetItem(file_path or ""))
+                self.archived_table.setItem(row_idx, 5, QTableWidgetItem(file_path))
+                self.archived_table.setItem(row_idx, 6, QTableWidgetItem(created_at))
+                self.archived_table.setItem(row_idx, 7, QTableWidgetItem(str(created_by)))
+
                 
         except Exception as e:
             logger.error(f"Failed to populate archive table: {e}", exc_info=True)

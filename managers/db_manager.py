@@ -199,6 +199,16 @@ class DatabaseManager:
             logger.error(f"Failed to get companies (all): {e}")
             raise
 
+    def get_users(self, user_id):
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("SELECT * FROM users")
+            return query.fetchall()
+        except Exception as e:
+            logger.error(f"Failed to get users: {e}")
+            raise
+
     def archive_company(self, company_id):
         """Archive a company and its boards (mark archived=1)."""
         try:
@@ -297,7 +307,7 @@ class DatabaseManager:
         try:
             with self.get_connection() as conn:
                 query = conn.cursor()
-                query.execute("UPDATE orders SET status='Active' WHERE order_id=?", (order_id,))
+                query.execute("UPDATE orders SET status='Pending' WHERE order_id=?", (order_id,))
                 conn.commit()
         except Exception as e:
             logger.error(f"Failed to unarchive order: {e}")
