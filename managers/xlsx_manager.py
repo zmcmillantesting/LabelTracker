@@ -1,10 +1,10 @@
-import os
+import os, logging
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 from datetime import datetime
 from managers.db_manager import DatabaseManager
 from openpyxl import load_workbook
-
+logger = logging.getLogger(__name__)
 
 class XLSXManager:
     def __init__(self, db: DatabaseManager):
@@ -19,10 +19,24 @@ class XLSXManager:
             prefix = "CUSTID-ORDNO-"
         return [f"{prefix}{str(i).zfill(5)}" for i in range(start, start + count)]
 
-    def create_order_file(self, order_number, created_by, user_id, company_id, pass_fail, 
-                         pass_fail_timestamp, failure_explanation, fix_explanation, 
-                         board_id=None, serial_prefix="CUSTID-ORDNO-", serial_start=1, serial_count=50,
-                         dest_dir: str = None):
+    def create_order_file(
+        self, 
+        order_number, 
+        created_by, 
+        user_id, 
+        company_id, 
+        pass_fail= None, 
+        pass_fail_timestamp=None,
+        failure_explanation=None, 
+        fix_explanation=None, 
+        board_id=None, 
+        board_name=None, 
+        serial_prefix="CUSTID-ORDNO-", 
+        serial_start=1, 
+        serial_count=50,
+        dest_dir: str = None):
+        
+
         """Create a new XLSX file for an order and register it in the DB."""
 
         # 1. Get company storage path from DB
@@ -32,14 +46,24 @@ class XLSXManager:
             raise ValueError(f"Company {company_id} not found")
 
         company_path = company[2]  # client_path from DB
-
-        # If caller provided an explicit destination directory, prefer that
         target_dir = dest_dir if dest_dir else company_path
         os.makedirs(target_dir, exist_ok=True)
 
-        # Build full file path
+        # 2. Build full file path
         filename = f"{order_number}.xlsx"
         file_path = os.path.join(target_dir, filename)
+
+        # 3. get usernames
+        username = "Unknown"
+        try:
+            with self.db.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("SELECT username FROM users WHERE user_id = ?", (user_id,))
+                result = query.fetchone()
+                if result:
+                    username = result[0]
+        except Exception as e:
+            logger.warning(f"Could not fetch username for user_id = {user_id}: {e}")
 
         # 4. Generate workbook
         wb = Workbook()
@@ -47,49 +71,54 @@ class XLSXManager:
         ws.title = f"{order_number} Tracking"
 
         # 5. Write headers
-        headers = ["User ID", "Company ID", "Board ID", "Serial Number", "pass/fail", 
-                  "pass/fail timestamp", "if failed explanation", "if fixed explanation"]
+        headers = [
+                "Created By (admin)",
+                "Created At",
+                "Operator",
+                "Company ID", 
+                "Board ID", 
+                "Serial Number", 
+                "pass/fail", 
+                "pass/fail timestamp", 
+                "Failure Explanation (only if failed)", 
+                "Repair Explanation (only if fixed)"
+            ]
         ws.append(headers)
 
-        # Format headers (bold and centered)
+        # 6. styling
         for col in ws[1]:
             col.font = Font(bold=True)
             col.alignment = Alignment(horizontal="center", vertical="center")
 
-        # 6. Add serial numbers with proper data alignment
+        # 7. data alignment
         serials = self._generate_serial_numbers(prefix=serial_prefix, start=serial_start, count=serial_count)
 
-        # Initial state for a newly-created order file should be Pending
-        # with no timestamp or explanations until users submit scans.
+        # 8. meta data
         status_value = "Pending"
+        created_at = datetime.now().strftime("%b %d, %Y %I:%M %p")
 
+        # 9. write serial rows
         for sn in serials:
-            # For newly created files, explanations and timestamp are empty
-            timestamp_cell = None
-            failure_cell = None
-            fix_cell = None
-
             row_data = [
-                user_id,                              # User ID
+                created_by,
+                created_at,
+                username,                              # User ID
                 company_id,                           # Company ID
-                board_id if board_id else None,      # Board ID (None if not specified)
+                board_name if board_id else None,      # Board ID (None if not specified)
                 sn,                                   # Serial Number
-                status_value,                         # pass/fail (Pending)
-                timestamp_cell,                       # pass/fail timestamp
-                failure_cell,                         # if failed explanation
-                fix_cell                              # if fixed explanation
+                status_value,                         # Pass/Fail
+                None,                                 # timestamp
+                None,                                 # fail explanation
+                None                                  # fix explanation  
             ]
             ws.append(row_data)
 
-        # 7. Format explanation columns (wrap text)
-        failure_explanation_col = 7  # "if failed explanation" column
-        fix_explanation_col = 8      # "if fixed explanation" column
+        # 10. Format explanations
+        for col_idx in (9,10):
+            for row in range(2, len(serials)+ 2):
+                ws.cell(row=row, column=col_idx).alignment = Alignment(wrap_text=True)
 
-        for row in range(2, len(serials) + 2):  # Start from row 2 (skip header)
-            ws.cell(row=row, column=failure_explanation_col).alignment = Alignment(wrap_text=True)
-            ws.cell(row=row, column=fix_explanation_col).alignment = Alignment(wrap_text=True)
-
-        # 8. Auto-size columns
+        # 11. Auto-size columns
         for col in ws.columns:
             max_length = 0
             col_letter = col[0].column_letter
@@ -99,10 +128,10 @@ class XLSXManager:
             # Set minimum width and add padding
             ws.column_dimensions[col_letter].width = max(max_length + 2, 10)
 
-        # 9. Save file
+        # 12. Save file
         wb.save(file_path)
 
-        # 10. Register order in DB
+        # 13. Register order in DB
         self.db.add_order(order_number, company_id, board_id, file_path, created_by)
 
         return file_path, len(serials)

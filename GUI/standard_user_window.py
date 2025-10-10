@@ -514,7 +514,7 @@ class UserWindow(QWidget):
         self.order_table = QTableWidget()
         self.order_table.setColumnCount(8)
         self.order_table.setHorizontalHeaderLabels([
-            "User ID", "Company ID", "Board ID", "Serial Number", 
+            "User", "Company", "Board", "Serial Number", 
             "Pass/Fail", "Timestamp", "Failure Explanation", "Fix Explanation"
         ])
         self.order_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -619,17 +619,40 @@ class UserWindow(QWidget):
             self.order_table.setRowCount(0)
             self.serial_history.clear()
             
+            user_map = {}
+            try:
+                with self.db_manager.get_connection() as conn:
+                    query = conn.cursor()
+                    query.execute("SELECT user_id, username FROM users")
+                    user_map ={u_id: name for u_id, name in query.fetchall()}
+            except Exception as e:
+                logger.warning(f'Could not fetch usernames: {e}')
+
+            company_map = {c[0]: c[1] for c in self.db_manager.get_companies_all(include_archived=True)}
+
+            board_map ={}
+            for company_id in company_map:
+                try:
+                    boards = self.db_manager.get_boards_by_company(company_id)
+                    for b_id, b_name, *_ in boards:
+                        board_map[b_id] = b_name
+                except Exception as e:
+                    continue
+
             # Read data (skip header row)
             for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=0):
                 user_id, company_id, board_id, serial_number, pass_fail, timestamp, failure_exp, fix_exp = row
 
                 # Normalize serial to a string and strip whitespace to ensure consistent lookup
+                username = user_map.get(user_id, "Unknown")
+                company_name = company_map.get(company_id, "Unknown")
+                board_name = board_map.get(board_id, "Unknown")
                 serial_str = str(serial_number).strip() if serial_number is not None else ""
 
                 self.order_table.insertRow(row_idx)
-                self.order_table.setItem(row_idx, 0, QTableWidgetItem(str(user_id) if user_id else ""))
-                self.order_table.setItem(row_idx, 1, QTableWidgetItem(str(company_id) if company_id else ""))
-                self.order_table.setItem(row_idx, 2, QTableWidgetItem(str(board_id) if board_id else ""))
+                self.order_table.setItem(row_idx, 0, QTableWidgetItem(username or "Unknown"))
+                self.order_table.setItem(row_idx, 1, QTableWidgetItem(company_name or "Unknown"))
+                self.order_table.setItem(row_idx, 2, QTableWidgetItem(board_name or ""))
                 self.order_table.setItem(row_idx, 3, QTableWidgetItem(serial_str))
                 
                 # Color code status
@@ -641,8 +664,17 @@ class UserWindow(QWidget):
                 else:
                     status_item.setForeground(Qt.yellow)
                 self.order_table.setItem(row_idx, 4, status_item)
+
+                formatted_timestamp = ""
+                if timestamp:
+                    try:
+                        dt = datetime.strptime(str(timestamp), "%Y-%m-%d %H:%M:%S")
+                        formatted_timestamp = dt.strftime("%b %d, %Y %I:%M %p")
+                    except Exception as e:
+                        formatted_timestamp - str(timestamp)
+                        logger.info(f"Failed to format timestamp: {e}")
                 
-                self.order_table.setItem(row_idx, 5, QTableWidgetItem(str(timestamp) if timestamp else ""))
+                self.order_table.setItem(row_idx, 5, QTableWidgetItem(formatted_timestamp))
                 self.order_table.setItem(row_idx, 6, QTableWidgetItem(str(failure_exp) if failure_exp else ""))
                 self.order_table.setItem(row_idx, 7, QTableWidgetItem(str(fix_exp) if fix_exp else ""))
                 
@@ -874,56 +906,75 @@ class UserWindow(QWidget):
         else:
             self.pass_checkbox.setChecked(False)
 
-    def submit_sn(self, failure_reason=""):
-        """Submit SN result"""
-        if not self.current_serial:
-            QMessageBox.warning(self, "Error", "Please select or enter a serial number first.")
+    def submit_sn(self):
+        """Handle submission of a serial number result and update the XLSX file."""
+        sn = self.serial_input.text().strip()
+        if not sn:
+            QMessageBox.warning(self, "Warning", "Please enter a serial number.")
             return
 
-        if not self.current_order_file:
-            QMessageBox.warning(self, "Error", "Please load an order first.")
+        result = self.pass_fail_dropdown.currentText().strip()
+        failure_explanation = self.failure_textbox.toPlainText().strip()
+        fix_explanation = self.fix_textbox.toPlainText().strip()
+
+        if result not in ["Pass", "Fail"]:
+            QMessageBox.warning(self, "Warning", "Please select Pass or Fail before submitting.")
             return
-
-        result = "Pass" if self.pass_checkbox.isChecked() else "Fail"
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        fix_reason = getattr(self, 'fix_explanation', "") if result == "Pass" else ""
 
         try:
-            norm_sn = self.normalize_sn(self.current_serial)
-            self.update_xlsx_file(
-                serial_number=norm_sn,
-                pass_fail=result,
-                timestamp=timestamp,
-                failure_explanation=failure_reason,
-                fix_explanation=fix_reason
-            )
-            
-            # Update history
-            if result == "Fail":
-                self.serial_history[norm_sn]["was_failed"] = True
-            elif result == "Pass":
-                self.serial_history[norm_sn]["was_failed"] = False
-            
-            logger.info(f"SN {self.current_serial} submitted: {result}")
-            
-            # Reload data
-            self.load_xlsx_data(self.current_order_file)
-            
-            # Reset and return to step 2
-            self.sn_input.clear()
-            self.pass_checkbox.setChecked(False)
-            self.fail_checkbox.setChecked(False)
-            self.sn_button.setEnabled(False)
-            self.current_serial = None
-            self.update_workflow_step(1)
-            
-            if hasattr(self, 'fix_explanation'):
-                delattr(self, 'fix_explanation')
-            
+            wb = load_workbook(self.xlsx_path)
+            ws = wb.active
+
+            # Find serial number row
+            sn_col_index = 6  # "Serial Number" column index in Excel (1-based)
+            pass_fail_col = 7
+            timestamp_col = 8
+            fail_exp_col = 9
+            fix_exp_col = 10
+
+            found_row = None
+            for row in range(2, ws.max_row + 1):
+                cell_value = str(ws.cell(row=row, column=sn_col_index).value).strip()
+                if cell_value == sn:
+                    found_row = row
+                    break
+
+            if not found_row:
+                QMessageBox.warning(self, "Warning", f"Serial number {sn} not found in file.")
+                return
+
+            # 🕒 Create timestamp for pass/fail
+            timestamp = datetime.now().strftime("%b %d, %Y %I:%M %p")
+
+            # Write results to workbook
+            ws.cell(row=found_row, column=pass_fail_col).value = result
+            ws.cell(row=found_row, column=timestamp_col).value = timestamp
+            ws.cell(row=found_row, column=fail_exp_col).value = failure_explanation if result == "Fail" else ""
+            ws.cell(row=found_row, column=fix_exp_col).value = fix_explanation if result == "Fail" else ""
+
+            # Save changes
+            wb.save(self.xlsx_path)
+
+            # Update UI table
+            for row in range(self.order_table.rowCount()):
+                table_sn = self.order_table.item(row, 3).text()
+                if table_sn == sn:
+                    self.order_table.setItem(row, 4, QTableWidgetItem(result))
+                    self.order_table.setItem(row, 5, QTableWidgetItem(timestamp))
+                    self.order_table.setItem(row, 6, QTableWidgetItem(failure_explanation))
+                    self.order_table.setItem(row, 7, QTableWidgetItem(fix_explanation))
+                    break
+
+            QMessageBox.information(self, "Success", f"Serial {sn} marked as {result}.")
+
+            # Reset input fields
+            self.serial_input.clear()
+            self.failure_textbox.clear()
+            self.fix_textbox.clear()
+
         except Exception as e:
-            logger.error(f"Failed to submit SN: {e}", exc_info=True)
-            QMessageBox.critical(self, "Error", f"Failed to submit SN:\n{str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to update file:\n{e}")
+            logger.error(f"Failed to update XLSX for serial {sn}: {e}", exc_info=True)
 
     def normalize_sn(self, sn: str) -> str:
         """Normalize a serial number string for consistent lookup.

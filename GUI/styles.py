@@ -161,6 +161,20 @@ QPushButton:hover {
 }
 """
 
+BUTTON_CREATE_STYLE = """
+QPushButton {
+    background: #4caf50;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-weight: bold;
+    margin 10px 20px;
+}
+QPushButton:hover {
+    background: da190b
+}
+"""
 # Table style
 TABLE_STYLE = """
 QTableWidget {

@@ -1,4 +1,4 @@
-import sqlite3, sys, os, hashlib, logging
+import sqlite3, sys, os, hashlib, logging, datetime
 from pathlib import Path
 from contextlib import contextmanager
 
@@ -272,9 +272,11 @@ class DatabaseManager:
         try:
             with self.get_connection() as conn:
                 query = conn.cursor()
+
+                created_at = datetime.datetime.now().strftime("%b %d, %Y %I:%M %p")
                 query.execute(
-                    "INSERT INTO orders (order_number, company_id, board_id, file_path, created_by) VALUES (?, ?, ?, ?, ?)",
-                    (order_number, company_id, board_id, file_path, created_by),
+                    "INSERT INTO orders (order_number, company_id, board_id, file_path, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)",
+                    (order_number, company_id, board_id, file_path, created_at, created_by),
                 )
                 conn.commit()
         except Exception as e:
@@ -321,6 +323,30 @@ class DatabaseManager:
                 return query.fetchall()
         except Exception as e:
             logger.error(f"Failed to get archived orders: {e}")
+            raise
+
+    def get_archived_orders_with_username(self):
+        try:
+            with self.get_connection() as conn:
+                query = conn.cursor()
+                query.execute("""
+                    SELECT o.order_number,
+                        c.company_name,
+                        b.board_name,
+                        o.status,
+                        o.file_path,
+                        o.created_at,
+                        u.username
+                    FROM orders o
+                    LEFT JOIN companies c ON o.company_id = c.company_id
+                    LEFT JOIN boards b ON o.board_id = b.board_id
+                    LEFT JOIN users u ON o.created_by = u.user_id
+                    WHERE o.status = 'Archived'
+                    ORDER BY o.created_at DESC
+                """)
+                return query.fetchall()
+        except Exception as e:
+            logger.error(f"Faield to get archived orders with usernames: {e}")
             raise
 
     def archive_board(self, board_id):

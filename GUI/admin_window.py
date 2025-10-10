@@ -277,7 +277,7 @@ class AdminWindow(QWidget):
         left_col.addWidget(QLabel("Order Number"))
         self.order_number_input = QLineEdit()
         self.order_number_input.setPlaceholderText("Enter order number...")
-        self.order_number_input.returnPressed.connect(self.create_order)
+        self.order_number_input.textChanged.connect(self.update_prefix_field)
         left_col.addWidget(self.order_number_input)
 
         left_col.addWidget(QLabel("Output Directory"))
@@ -294,7 +294,7 @@ class AdminWindow(QWidget):
         right_col.addWidget(QLabel("Part Number"))
         self.board_dropdown = QComboBox()
         self.board_dropdown.addItem("Select part...", None)
-        self.board_dropdown.setMinimumWidth(240)
+        self.board_dropdown.currentIndexChanged.connect(self.on_board_selected)
         right_col.addWidget(self.board_dropdown)
 
         right_col.addWidget(QLabel("Total Boards"))
@@ -343,14 +343,10 @@ class AdminWindow(QWidget):
         
         # Action buttons
         btn_row = QHBoxLayout()
-        self.preview_button = QPushButton("Preview")
-        self.preview_button.clicked.connect(self.preview_order)
-        self.preview_button.setStyleSheet(styles.BUTTON_LINK_STYLE)
-        btn_row.addWidget(self.preview_button)
 
         self.create_order_button = QPushButton("Create Order")
         self.create_order_button.clicked.connect(self.create_order)
-        self.create_order_button.setStyleSheet(styles.BUTTON_LINK_STYLE)
+        self.create_order_button.setStyleSheet(styles.BUTTON_CREATE_STYLE)
         btn_row.addWidget(self.create_order_button)
         btn_row.addStretch()
 
@@ -491,6 +487,7 @@ class AdminWindow(QWidget):
             self.await_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         except Exception:
             pass
+        self.await_table.setMaximumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
         left_layout.addWidget(self.await_table)
 
         # Right side - Order details and pie chart
@@ -594,7 +591,7 @@ class AdminWindow(QWidget):
         self.archived_table = QTableWidget()
         self.archived_table.setColumnCount(6)
         self.archived_table.setHorizontalHeaderLabels([
-            "Order ID", "Order Number", "Company", "Board", "Status", "File Path"
+            "Order Number", "Company", "Board", "Status", "File Path", "Creation Date", "Created By",
         ])
         self.archived_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.archived_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -603,6 +600,7 @@ class AdminWindow(QWidget):
             self.archived_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         except Exception:
             pass
+
         self.archived_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
         panel.content_layout.addWidget(self.archived_table)
         
@@ -793,7 +791,9 @@ class AdminWindow(QWidget):
                 boards = self.db_manager.get_boards_by_company(company_id)
                 for b in boards:
                     board_id = b[0]
+                    print("Board ID: ", board_id)
                     board_name = b[1]
+                    print("Board Name: ", board_name)
                     archived = b[2] if len(b) > 2 else 0
                     if archived:
                         continue
@@ -809,12 +809,47 @@ class AdminWindow(QWidget):
                 if company:
                     client_path = company[2] if len(company) > 2 else None
                     cust_id = company[3] if len(company) > 3 else None
+                    prefix = f"{cust_id}{board_name}-"
                     if client_path:
                         self.output_path_input.setText(client_path)
                     if cust_id:
                         self.cust_code_input.setText(str(cust_id))
+
             except Exception as e:
                 logger.error(f"Failed to load boards: {e}", exc_info=True)
+
+        self.update_prefix_field()
+
+    def on_board_selected(self, index):
+        self.update_prefix_field()
+
+    def update_prefix_field(self):
+        try:
+            company_id = self.company_dropdown.currentData()
+            board_name = self.board_dropdown.currentText()
+            order_number = self.order_number_input.text().strip()
+
+            if not company_id or not board_name or board_name in ["Select part...", "Select Board"]:
+                return 
+            
+            companies = self.db_manager.get_companies()
+            company = next((c for c in companies if c[0] == company_id), None)
+            if not company:
+                return 
+            
+            cust_code = company[3] if len(company) > 3 else None
+            if not cust_code:
+                return 
+            
+            prefix = f"{cust_code}{board_name}-"
+
+            if order_number:
+                prefix = f"{cust_code}{board_name}-{order_number}"
+
+            self.prefix_input.setText(prefix)
+        
+        except Exception as e:
+            logger.error(f"Failed to auto-generate prefix: {e}", exc_info=True)
 
     def on_order_selected(self):
         """Handle order selection - show details and pie chart"""
@@ -1037,6 +1072,7 @@ class AdminWindow(QWidget):
         board_id = self.board_dropdown.currentData()
         total = self.total_boards_input.text().strip()
 
+
         board_name = None
         try:
             with self.db_manager.get_connection() as conn:
@@ -1125,65 +1161,9 @@ class AdminWindow(QWidget):
             logger.error(f"Failed to create order: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Failed to create order:\n{str(e)}")
 
-    def preview_order(self):
-        """Generate preview of XLSX rows"""
-        company_id = self.company_dropdown.currentData()
-        board_id = self.board_dropdown.currentData()
-        total = self.total_boards_input.text().strip()
-
-        board_name = None
-        try:
-            with self.db_manager.get_connection() as conn:
-                query = conn.cursor()
-                query.execute("SELECT board_name FROM boards WHERE board_id=?", (board_id,))
-                result = query.fetchone()
-                if result:
-                    board_name = result[0]
-        except Exception as e:
-            logger.error(f"Failed to preview order with correct SN:  {e}")
-            raise
-
-
-        if not company_id:
-            QMessageBox.warning(self, "Error", "Please select a company to preview.")
-            return
-
-        if not total.isdigit() or int(total) <= 0:
-            QMessageBox.warning(self, "Error", "Total boards must be a positive number.")
-            return
-
-        order_number = self.order_number_input.text().strip() or "PREVIEW"
-        cust_code = self.cust_code_input.text().strip() or None
-        if cust_code:
-            cust_code = cust_code.upper()
-
-        serial_prefix = None
-        if cust_code:
-            serial_prefix = f"{cust_code}-{board_name}-{order_number}-"
-
-        serials = self.xlsx_manager._generate_serial_numbers(prefix=serial_prefix, start=1, count=int(total))
-
-        show_count = min(len(serials), 50)
-        self.preview_table.setRowCount(0)
-        for i in range(show_count):
-            sn = serials[i]
-            row_idx = i
-            self.preview_table.insertRow(row_idx)
-            self.preview_table.setItem(row_idx, 0, QTableWidgetItem(str(self.user_id)))
-            self.preview_table.setItem(row_idx, 1, QTableWidgetItem(str(company_id)))
-            self.preview_table.setItem(row_idx, 2, QTableWidgetItem(str(board_id) if board_id else ""))
-            self.preview_table.setItem(row_idx, 3, QTableWidgetItem(sn))
-            self.preview_table.setItem(row_idx, 4, QTableWidgetItem("Pending"))
-            self.preview_table.setItem(row_idx, 5, QTableWidgetItem(""))
-            self.preview_table.setItem(row_idx, 6, QTableWidgetItem(""))
-            self.preview_table.setItem(row_idx, 7, QTableWidgetItem(""))
-
-        self.preview_label.setVisible(True)
-        self.preview_table.setVisible(True)
-
     def browse_output_path(self):
         """Open folder picker for output directory"""
-        selected = QFileDialog.getExistingDirectory(self, "Select Output Directory", "")
+        selected = QFileDialog.getExistingDirectory(self, "Select Output Directory", r"P:\Label Tracking")
         if selected:
             self.output_path_input.setText(selected)
 
@@ -1516,26 +1496,23 @@ class AdminWindow(QWidget):
         self.archived_table.setRowCount(0)
         
         try:
-            archived_orders = self.db_manager.get_archived_orders()
+            if not orders: 
+                archived_orders = self.db_manager.get_archived_orders_with_username()
+            else:
+                archived_orders = orders
+            
             if not archived_orders:
-                return 
+                return
             
-            
-            for row_idx, order in enumerate(archived_orders):
+            for row_idx, (order_number, company_name, board_name, status, file_path, created_at, username) in enumerate(archived_orders):
                 self.archived_table.insertRow(row_idx)
-                order_id, order_number, company_id, board_id, status, file_path, created_at, created_by = order
-
-                if status != "Archived":
-                    continue
-
-                self.archived_table.setItem(row_idx, 0, QTableWidgetItem(str(order_id)))
-                self.archived_table.setItem(row_idx, 1, QTableWidgetItem(order_number))
-                self.archived_table.setItem(row_idx, 2, QTableWidgetItem(str(company_id)))
-                self.archived_table.setItem(row_idx, 3, QTableWidgetItem(str(board_id)))
-                self.archived_table.setItem(row_idx, 4, QTableWidgetItem(status))
-                self.archived_table.setItem(row_idx, 5, QTableWidgetItem(file_path))
-                self.archived_table.setItem(row_idx, 6, QTableWidgetItem(created_at))
-                self.archived_table.setItem(row_idx, 7, QTableWidgetItem(str(created_by)))
+                self.archived_table.setItem(row_idx, 0, QTableWidgetItem(order_number or ""))
+                self.archived_table.setItem(row_idx, 1, QTableWidgetItem(company_name or "Unknown"))
+                self.archived_table.setItem(row_idx, 2, QTableWidgetItem(board_name or "Unknown"))
+                self.archived_table.setItem(row_idx, 3, QTableWidgetItem(status or ""))
+                self.archived_table.setItem(row_idx, 4, QTableWidgetItem(file_path or ""))
+                self.archived_table.setItem(row_idx, 5, QTableWidgetItem(created_at or ""))
+                self.archived_table.setItem(row_idx, 6, QTableWidgetItem(str(username or "Unknown")))
 
                 
         except Exception as e:
