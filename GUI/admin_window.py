@@ -1072,7 +1072,6 @@ class AdminWindow(QWidget):
         board_id = self.board_dropdown.currentData()
         total = self.total_boards_input.text().strip()
 
-
         board_name = None
         try:
             with self.db_manager.get_connection() as conn:
@@ -1114,17 +1113,67 @@ class AdminWindow(QWidget):
 
         dest_dir = self.output_path_input.text().strip() or None
 
+        # Get company and board names for verification
+        company_name = self.company_dropdown.currentText()
+        board_display_name = self.board_dropdown.currentText()
+
         try:
-            cust_code = self.cust_code_input.text().strip() or None
+            # Get the custom prefix from the input field
             serial_prefix = self.prefix_input.text().strip() or None
+
+            # Only auto-generate if the prefix is empty
+            if not serial_prefix:
+                cust_code = self.cust_code_input.text().strip() or None
+                if cust_code:
+                    cust_code = cust_code.upper()
+
+                if cust_code and board_name:
+                    serial_prefix = f"{cust_code}-{board_name}-{order_number}-"
+                else:
+                    serial_prefix = f"ORD-{order_number}-"
+
+            # Ensure prefix ends with a dash
             if not serial_prefix.endswith('-'):
                 serial_prefix += '-'
-                
-            if cust_code:
-                cust_code = cust_code.upper()
 
-            if cust_code and board_name:
-                serial_prefix = f"{cust_code}-{board_name}-{order_number}-"
+            # Generate sample serial number
+            sample_serial = f"{serial_prefix}00001"
+
+            # Create verification dialog
+            verify_msg = QMessageBox(self)
+            verify_msg.setWindowTitle("Verify Order Information")
+            verify_msg.setIcon(QMessageBox.Question)
+            verify_msg.setTextFormat(Qt.RichText)
+
+            verification_text = f"""
+    <p>Please verify the following order information:</p>
+
+    <p><b>Order Details:</b><br/>
+    • Order Number: {order_number}<br/>
+    • Company: {company_name}<br/>
+    • Part Number: {board_display_name}<br/>
+    • Total Quantity: {total}</p>
+
+    <p><b>Serial Number Format:</b><br/>
+    • Prefix: {serial_prefix}<br/>
+    • Sample Serial: {sample_serial}</p>
+
+    <p><b>Output Location:</b><br/>
+    • Directory: {dest_dir or 'Default company path'}</p>
+
+    <p><b>Would you like to create this order?</b></p>
+    """
+
+            verify_msg.setText(verification_text)
+            verify_msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            verify_msg.setDefaultButton(QMessageBox.No)
+
+            # Show dialog and check response
+            response = verify_msg.exec_()
+
+            if response != QMessageBox.Yes:
+                logger.info(f"Order creation cancelled by user for order: {order_number}")
+                return
 
             file_path, count = self.xlsx_manager.create_order_file(
                 order_number=order_number,
@@ -1141,13 +1190,14 @@ class AdminWindow(QWidget):
                 serial_prefix=serial_prefix,
             )
 
-            logger.info(f"Order {order_number} created with {count} serial numbers")
+            logger.info(f"Order {order_number} created with {count} serial numbers using prefix: {serial_prefix}")
             QMessageBox.information(
                 self, 
                 "Order Created", 
                 f"Order {order_number} created successfully!\n"
                 f"File: {file_path}\n"
-                f"Serial numbers: {count}"
+                f"Serial numbers: {count}\n"
+                f"Prefix: {serial_prefix}"
             )
 
             # Clear inputs
@@ -1156,11 +1206,12 @@ class AdminWindow(QWidget):
             self.total_boards_input.clear()
             self.order_number_input.clear()
             self.cust_code_input.clear()
+            self.prefix_input.clear()
+            self.output_path_input.clear()
 
         except Exception as e:
             logger.error(f"Failed to create order: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Failed to create order:\n{str(e)}")
-
     def browse_output_path(self):
         """Open folder picker for output directory"""
         selected = QFileDialog.getExistingDirectory(self, "Select Output Directory", r"P:\Label Tracking")
