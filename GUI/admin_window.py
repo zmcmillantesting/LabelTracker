@@ -487,7 +487,7 @@ class AdminWindow(QWidget):
             self.await_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         except Exception:
             pass
-        self.await_table.setMaximumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
+        self.await_table.setMinimumHeight(DEFAULT_VISIBLE_ROWS * 24 + 48)
         left_layout.addWidget(self.await_table)
 
         # Right side - Order details and pie chart
