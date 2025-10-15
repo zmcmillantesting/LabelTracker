@@ -1,0 +1,22 @@
+2025-10-15 12:36:24,953 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251015_123624.log
+2025-10-15 12:36:24,953 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-15 12:36:24,967 - utils.logger - INFO - Database manager initialized
+2025-10-15 12:36:24,967 - utils.logger - INFO - XLSX manager initialized
+2025-10-15 12:36:24,984 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-15 12:36:25,348 - GUI.app - INFO - Login window displayed
+2025-10-15 12:36:25,348 - utils.logger - INFO - Application controller started
+2025-10-15 12:36:25,348 - GUI.app - INFO - Starting application event loop
+2025-10-15 12:36:29,093 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-15 12:36:29,098 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-15 12:36:29,175 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-15 12:36:29,177 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-15 12:36:29,180 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-15 12:36:29,220 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-15 12:36:29,244 - GUI.app - INFO - Admin window displayed for admin
+2025-10-15 12:36:31,306 - GUI.app - INFO - Login window displayed
+2025-10-15 12:36:34,412 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-15 12:36:34,417 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-15 12:36:34,473 - GUI.app - INFO - User window displayed for test
+2025-10-15 12:36:37,855 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-15 12:36:37,858 - GUI.standard_user_window - INFO - Order 1234.1 loaded successfully
+2025-10-15 12:36:41,061 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-1234.1-00004

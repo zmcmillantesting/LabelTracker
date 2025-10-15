@@ -1,0 +1,13 @@
+2025-10-15 12:48:38,884 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251015_124838.log
+2025-10-15 12:48:38,884 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-15 12:48:38,895 - utils.logger - INFO - Database manager initialized
+2025-10-15 12:48:38,895 - utils.logger - INFO - XLSX manager initialized
+2025-10-15 12:48:38,910 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-15 12:48:39,274 - GUI.app - INFO - Login window displayed
+2025-10-15 12:48:39,275 - utils.logger - INFO - Application controller started
+2025-10-15 12:48:39,275 - GUI.app - INFO - Starting application event loop
+2025-10-15 12:48:42,818 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-15 12:48:42,823 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-15 12:48:42,901 - GUI.app - INFO - User window displayed for test
+2025-10-15 12:48:47,264 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-15 12:48:47,267 - GUI.standard_user_window - INFO - Order 1234.1 loaded successfully

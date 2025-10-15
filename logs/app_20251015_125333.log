@@ -1,0 +1,46 @@
+2025-10-15 12:53:33,327 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251015_125333.log
+2025-10-15 12:53:33,327 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-15 12:53:33,338 - utils.logger - INFO - Database manager initialized
+2025-10-15 12:53:33,338 - utils.logger - INFO - XLSX manager initialized
+2025-10-15 12:53:33,353 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-15 12:53:33,709 - GUI.app - INFO - Login window displayed
+2025-10-15 12:53:33,709 - utils.logger - INFO - Application controller started
+2025-10-15 12:53:33,710 - GUI.app - INFO - Starting application event loop
+2025-10-15 12:53:36,174 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-15 12:53:36,179 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-15 12:53:36,252 - GUI.app - INFO - User window displayed for test
+2025-10-15 12:53:45,260 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-15 12:53:45,263 - GUI.standard_user_window - INFO - Order 1234.1 loaded successfully
+2025-10-15 12:53:55,856 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-1234.1-00008
+2025-10-15 12:54:04,028 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-1234.1-00009
+2025-10-15 12:54:11,180 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-1234.1-00010
+2025-10-15 12:54:17,425 - GUI.app - INFO - Login window displayed
+2025-10-15 12:54:21,206 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-15 12:54:21,211 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-15 12:54:21,271 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-15 12:54:21,273 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-15 12:54:21,275 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-15 12:54:21,300 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-15 12:54:21,319 - GUI.app - INFO - Admin window displayed for admin
+2025-10-15 12:54:22,641 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "C:\Users\zmcmillan\projects\LabelTracker\GUI\admin_window.py", line 1558, in populate_archive_orders
+    for row_idx, (order_number, company_name, board_name, status, file_path, created_at, username) in enumerate(archived_orders):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: too many values to unpack (expected 7)
+2025-10-15 12:54:22,651 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-15 12:54:32,930 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "C:\Users\zmcmillan\projects\LabelTracker\GUI\admin_window.py", line 1558, in populate_archive_orders
+    for row_idx, (order_number, company_name, board_name, status, file_path, created_at, username) in enumerate(archived_orders):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: too many values to unpack (expected 7)
+2025-10-15 12:54:32,938 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-15 12:54:45,084 - GUI.app - INFO - Login window displayed
+2025-10-15 12:54:50,072 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-15 12:54:50,077 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-15 12:54:50,141 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-15 12:54:50,145 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-15 12:54:50,147 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-15 12:54:50,169 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-15 12:54:50,186 - GUI.app - INFO - Admin window displayed for admin
