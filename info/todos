@@ -1,0 +1,7 @@
+General todos:
+    ☐ update refresh for awaiting orders in admin to match live xlsx files @1h
+    ☐ figure out if admin can have a xlsx file open while user is updating that file at the same time @0.5h 
+    ☐ delete unused or redundant code everywhere @3h
+
+    
+
