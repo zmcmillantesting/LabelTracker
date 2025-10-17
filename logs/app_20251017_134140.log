@@ -1,0 +1,18 @@
+2025-10-17 13:41:40,500 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251017_134140.log
+2025-10-17 13:41:40,500 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-17 13:41:40,513 - utils.logger - INFO - Database manager initialized
+2025-10-17 13:41:40,513 - utils.logger - INFO - XLSX manager initialized
+2025-10-17 13:41:40,529 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-17 13:41:40,892 - GUI.app - INFO - Login window displayed
+2025-10-17 13:41:40,892 - utils.logger - INFO - Application controller started
+2025-10-17 13:41:40,892 - GUI.app - INFO - Starting application event loop
+2025-10-17 13:41:44,341 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-17 13:41:44,346 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-17 13:41:44,417 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-17 13:41:44,419 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-17 13:41:44,422 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-17 13:41:44,449 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-17 13:41:44,472 - GUI.app - INFO - Admin window displayed for admin
+2025-10-17 13:41:47,296 - GUI.admin_window - INFO - Order 1234.1 stats: Active - Pass:9, Fail:1, Pending:0, Total:10
+2025-10-17 13:41:48,687 - GUI.admin_window - INFO - Order 123451 stats: Pending - Pass:0, Fail:0, Pending:10, Total:10
+2025-10-17 13:41:49,543 - GUI.admin_window - INFO - Order 1234.1 stats: Active - Pass:9, Fail:1, Pending:0, Total:10

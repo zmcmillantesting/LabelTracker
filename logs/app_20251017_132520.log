@@ -1,0 +1,22 @@
+2025-10-17 13:25:20,291 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251017_132520.log
+2025-10-17 13:25:20,292 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-17 13:25:20,297 - utils.logger - INFO - Database manager initialized
+2025-10-17 13:25:20,297 - utils.logger - INFO - XLSX manager initialized
+2025-10-17 13:25:20,311 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-17 13:25:20,663 - GUI.app - INFO - Login window displayed
+2025-10-17 13:25:20,663 - utils.logger - INFO - Application controller started
+2025-10-17 13:25:20,663 - GUI.app - INFO - Starting application event loop
+2025-10-17 13:25:24,524 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-17 13:25:24,529 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-17 13:25:24,602 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-17 13:25:24,605 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-17 13:25:24,607 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-17 13:25:24,636 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-17 13:25:24,658 - GUI.app - INFO - Admin window displayed for admin
+2025-10-17 13:26:14,821 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "C:\Users\zmcmillan\projects\LabelTracker\GUI\admin_window.py", line 1559, in populate_archive_orders
+    for row_idx, (order_number, company_name, board_name, status, file_path, created_at, username) in enumerate(archived_orders):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: too many values to unpack (expected 7)
+2025-10-17 13:26:14,829 - GUI.admin_window - INFO - Loaded 2 orders

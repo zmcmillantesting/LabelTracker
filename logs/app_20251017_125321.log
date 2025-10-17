@@ -1,0 +1,21 @@
+2025-10-17 12:53:21,700 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251017_125321.log
+2025-10-17 12:53:21,700 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-17 12:53:21,718 - utils.logger - INFO - Database manager initialized
+2025-10-17 12:53:21,718 - utils.logger - INFO - XLSX manager initialized
+2025-10-17 12:53:21,755 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-17 12:53:22,634 - GUI.app - INFO - Login window displayed
+2025-10-17 12:53:22,634 - utils.logger - INFO - Application controller started
+2025-10-17 12:53:22,634 - GUI.app - INFO - Starting application event loop
+2025-10-17 12:53:28,825 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-17 12:53:28,829 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-17 12:53:28,916 - GUI.app - INFO - User window displayed for test
+2025-10-17 12:53:33,503 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-17 12:53:33,506 - GUI.standard_user_window - INFO - Order 1234.1 loaded successfully
+2025-10-17 12:53:44,938 - GUI.app - INFO - Login window displayed
+2025-10-17 12:53:49,389 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-17 12:53:49,394 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-17 12:53:49,458 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-17 12:53:49,460 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-17 12:53:49,463 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-17 12:53:49,512 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-17 12:53:49,533 - GUI.app - INFO - Admin window displayed for admin

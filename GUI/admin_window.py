@@ -861,41 +861,47 @@ class AdminWindow(QWidget):
             self.confirm_archive_btn.setEnabled(False)
             self.order_details_label.setText("Select an order to view details")
             return
-        
+
         try:
             order_id = int(self.await_table.item(row, 0).text())
             order_number = self.await_table.item(row, 1).text()
             company = self.await_table.item(row, 2).text()
             board = self.await_table.item(row, 3).text()
-            
-            # Get file path
+
+            # Get file path from database
             orders = self.db_manager.get_orders()
             order = next((o for o in orders if o[0] == order_id), None)
             if not order:
+                logger.warning(f"Order {order_id} not found in database")
                 return
-            
+
             file_path = order[5]
-            
-            # Calculate status
+
+            # IMPORTANT: Calculate status directly from file (NOT from table display)
             status_str, pass_count, fail_count, pending_count, total_count = self.calculate_order_status(file_path)
-            
+
+            logger.info(f"Order {order_number} stats: {status_str} - Pass:{pass_count}, Fail:{fail_count}, Pending:{pending_count}, Total:{total_count}")
+
             # Update labels
             self.order_details_label.setText(f"Order Details: {order_number}")
             self.order_number_label.setText(f"Order #: {order_number}")
             self.order_company_label.setText(f"Company: {company}")
             self.order_board_label.setText(f"Board: {board}")
             self.order_total_label.setText(f"Total Quantity: {total_count}")
-            
+
             self.order_info_widget.setVisible(True)
             self.view_await_btn.setEnabled(True)
+
+            # Enable archive button only if complete
             self.confirm_archive_btn.setEnabled(status_str == "Complete")
-            
-            # Draw pie chart
+
+            # Draw pie chart with actual counts from file
             self.draw_pie_chart(pass_count, fail_count, pending_count)
-            
+
         except Exception as e:
             logger.error(f"Failed to display order details: {e}", exc_info=True)
-    
+            QMessageBox.warning(self, "Error", f"Failed to load order details:\n{str(e)}")
+        
     def draw_pie_chart(self, pass_count, fail_count, pending_count):
         """Display pass/fail/pending statistics"""
         # Clear previous widgets
@@ -1212,6 +1218,7 @@ class AdminWindow(QWidget):
         except Exception as e:
             logger.error(f"Failed to create order: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Failed to create order:\n{str(e)}")
+  
     def browse_output_path(self):
         """Open folder picker for output directory"""
         selected = QFileDialog.getExistingDirectory(self, "Select Output Directory", r"P:\Label Tracking")
@@ -1907,11 +1914,17 @@ class AdminWindow(QWidget):
 
             # Skip header row, start from row 2
             for row in ws.iter_rows(min_row=2, values_only=True):
-                if not row or len(row) < 5:
+                if not row or len(row) < 7:
                     continue
                 
                 total_count += 1
-                status = str(row[4]).strip().lower() if row[4] else "pending"
+                status_value = row[6]
+
+                if status_value is None:
+                    status = "Pending"
+                else:
+                    status = str(status_value).strip().lower()
+
 
                 if status == "pass":
                     pass_count += 1
@@ -1923,13 +1936,16 @@ class AdminWindow(QWidget):
             wb.close()
 
             # Determine overall status
-            if pending_count == total_count:
+            if total_count == 0:
+                status_str = "Pending"
+            elif pending_count == total_count:
                 status_str = "Pending"
             elif pass_count == total_count:
                 status_str = "Complete"
             else:
                 status_str = "Active"
 
+            logger.debug(f"Calculated status for {file_path}: {status_str}(P:{pass_count}, F:{fail_count}, Pend:{pending_count})")
             return (status_str, pass_count, fail_count, pending_count, total_count)
 
         except Exception as e:
