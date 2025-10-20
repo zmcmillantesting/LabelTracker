@@ -1,0 +1,18 @@
+2025-10-20 15:50:35,069 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251020_155035.log
+2025-10-20 15:50:35,069 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-20 15:50:35,098 - utils.logger - INFO - Database manager initialized
+2025-10-20 15:50:35,098 - utils.logger - INFO - XLSX manager initialized
+2025-10-20 15:50:35,102 - utils.logger - ERROR - Application failed to start: setEchoMode(self, a0: QLineEdit.EchoMode): argument 1 has unexpected type 'method'
+Traceback (most recent call last):
+  File "C:\Users\zmcmillan\projects\LabelTracker\main.py", line 34, in main
+    controller = AppController(db_manager, xlsx_manager)
+  File "C:\Users\zmcmillan\projects\LabelTracker\GUI\app.py", line 39, in __init__
+    self.login_window = LoginWindow(self.handle_login_success, self.db_manager)
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zmcmillan\projects\LabelTracker\GUI\login_window.py", line 17, in __init__
+    self.setup_ui()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\zmcmillan\projects\LabelTracker\GUI\login_window.py", line 28, in setup_ui
+    self.password_input.setEchoMode(self.toggle_password_visibility)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: setEchoMode(self, a0: QLineEdit.EchoMode): argument 1 has unexpected type 'method'
