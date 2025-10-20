@@ -1,0 +1,177 @@
+2025-10-20 13:10:02,214 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\dist\logs\app_20251020_131002.log
+2025-10-20 13:10:02,214 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-20 13:10:02,226 - utils.logger - INFO - Database manager initialized
+2025-10-20 13:10:02,226 - utils.logger - INFO - XLSX manager initialized
+2025-10-20 13:10:02,242 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-20 13:10:02,594 - GUI.app - INFO - Login window displayed
+2025-10-20 13:10:02,594 - utils.logger - INFO - Application controller started
+2025-10-20 13:10:02,595 - GUI.app - INFO - Starting application event loop
+2025-10-20 13:10:15,278 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-20 13:10:15,283 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-20 13:10:15,345 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:10:15,347 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:10:15,348 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-20 13:10:15,375 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-20 13:10:15,398 - GUI.app - INFO - Admin window displayed for admin
+2025-10-20 13:10:18,247 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 13:10:18,253 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 13:10:20,338 - GUI.admin_window - INFO - Order 123451 stats: Active - Pass:4, Fail:0, Pending:6, Total:10
+2025-10-20 13:10:37,951 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 13:10:37,961 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 13:10:56,427 - GUI.admin_window - INFO - Company added: Champion X (cust_id=CHA)
+2025-10-20 13:10:57,447 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:10:57,455 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:11:00,162 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:11:00,166 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:11:20,995 - GUI.admin_window - INFO - Board: SRU1 added with path P:/Label Tracking/ChampionX/SRU1
+2025-10-20 13:11:21,809 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:11:21,812 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:11:41,096 - GUI.admin_window - INFO - Board updated: SRU1
+2025-10-20 13:11:42,057 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:11:42,059 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:11:55,641 - GUI.admin_window - INFO - Board archived: SRU1
+2025-10-20 13:11:56,466 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:11:56,469 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:12:26,371 - GUI.admin_window - INFO - Company added: Example Corp A (cust_id=EXA)
+2025-10-20 13:12:27,122 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:12:27,127 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:12:31,124 - GUI.admin_window - INFO - Company archived: Example Corp A
+2025-10-20 13:12:33,071 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:12:33,074 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:12:34,325 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:12:34,328 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:12:35,852 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:12:35,855 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:12:39,258 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 13:12:39,271 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 13:13:03,204 - GUI.admin_window - INFO - User added: 894 (admin)
+2025-10-20 13:13:04,080 - GUI.admin_window - INFO - Loaded 3 users
+2025-10-20 13:13:18,598 - GUI.admin_window - INFO - User added: operator 1 (user)
+2025-10-20 13:13:19,327 - GUI.admin_window - INFO - Loaded 4 users
+2025-10-20 13:13:40,104 - GUI.admin_window - INFO - Deleted temp preview file: C:\Users\ZMCMIL~1\AppData\Local\Temp\123451_preview.xlsx
+2025-10-20 13:13:40,125 - GUI.app - INFO - Login window displayed
+2025-10-20 13:13:46,233 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-20 13:13:46,238 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-20 13:13:46,295 - GUI.app - INFO - User window displayed for test
+2025-10-20 13:13:52,290 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-20 13:13:52,292 - GUI.standard_user_window - INFO - Order 1234.1 loaded successfully
+2025-10-20 13:14:01,226 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-1234.1-00010
+2025-10-20 13:14:07,085 - GUI.app - INFO - Login window displayed
+2025-10-20 13:14:12,218 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-20 13:14:12,223 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-20 13:14:12,284 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:14:12,286 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:14:12,288 - GUI.admin_window - INFO - Loaded 4 users
+2025-10-20 13:14:12,320 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-20 13:14:12,337 - GUI.app - INFO - Admin window displayed for admin
+2025-10-20 13:14:21,025 - GUI.admin_window - INFO - Order 1234.1 stats: Complete - Pass:10, Fail:0, Pending:0, Total:10
+2025-10-20 13:14:29,598 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 13:14:29,613 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 13:14:35,023 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 13:14:35,024 - GUI.admin_window - INFO - Search found 1 orders
+2025-10-20 13:14:36,814 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 13:14:36,826 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 13:14:37,335 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 13:14:37,356 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 14:25:08,894 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 14:25:08,904 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 14:25:09,573 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 14:25:09,582 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 14:25:09,757 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 14:25:09,766 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 14:25:09,916 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 14:25:09,925 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 14:25:11,108 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "GUI\admin_window.py", line 1568, in populate_archive_orders
+ValueError: too many values to unpack (expected 7)
+2025-10-20 14:25:11,116 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 14:26:23,954 - GUI.admin_window - INFO - Order 9876.1 created with 10 serial numbers using prefix: QTX13504-9876.1-Rev C-
+2025-10-20 14:26:33,002 - GUI.admin_window - INFO - Order 123451 stats: Active - Pass:4, Fail:0, Pending:6, Total:10
+2025-10-20 14:26:44,406 - GUI.app - INFO - Login window displayed
+2025-10-20 14:26:51,724 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-20 14:26:51,730 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-20 14:26:51,783 - GUI.app - INFO - User window displayed for test
+2025-10-20 14:26:55,335 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-20 14:26:55,336 - GUI.standard_user_window - INFO - Order 9876.1 loaded successfully
+2025-10-20 14:26:58,680 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-9876.1-Rev C-00001
+2025-10-20 14:27:00,967 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-9876.1-Rev C-00002
+2025-10-20 14:27:02,933 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-9876.1-Rev C-00003
+2025-10-20 14:27:04,974 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-9876.1-Rev C-00004
+2025-10-20 14:27:06,983 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-9876.1-Rev C-00005
+2025-10-20 14:27:08,860 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-9876.1-Rev C-00006
+2025-10-20 14:27:10,836 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-9876.1-Rev C-00007
+2025-10-20 14:27:12,998 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-9876.1-Rev C-00008
+2025-10-20 14:27:16,279 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-9876.1-Rev C-00009
+2025-10-20 14:27:25,529 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-9876.1-Rev C-00010
+2025-10-20 14:27:29,619 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-20 14:27:29,621 - GUI.standard_user_window - INFO - Order 9876.1 loaded successfully
+2025-10-20 14:27:36,358 - GUI.standard_user_window - WARNING - Order not found: 321451
+2025-10-20 14:27:40,163 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-20 14:27:40,164 - GUI.standard_user_window - INFO - Order 123451 loaded successfully
+2025-10-20 14:27:45,632 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-123451-00005
+2025-10-20 14:27:47,951 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-123451-00006
+2025-10-20 14:27:49,958 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-123451-00007
+2025-10-20 14:27:51,647 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-123451-00008
+2025-10-20 14:28:42,591 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-123451-00006
+2025-10-20 14:29:05,500 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-20 14:29:05,502 - GUI.standard_user_window - INFO - Order 9876.1 loaded successfully
+2025-10-20 14:29:10,305 - GUI.app - INFO - Login window displayed
+2025-10-20 14:29:14,755 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-20 14:29:14,759 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-20 14:29:14,823 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 14:29:14,826 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 14:29:14,828 - GUI.admin_window - INFO - Loaded 4 users
+2025-10-20 14:29:14,857 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-20 14:29:14,875 - GUI.app - INFO - Admin window displayed for admin
+2025-10-20 14:29:19,613 - GUI.admin_window - INFO - Order 123451 stats: Active - Pass:7, Fail:1, Pending:2, Total:10
+2025-10-20 14:29:21,414 - GUI.admin_window - INFO - Order 9876.1 stats: Complete - Pass:10, Fail:0, Pending:0, Total:10
+2025-10-20 14:29:23,549 - GUI.admin_window - INFO - Order 123451 stats: Active - Pass:7, Fail:1, Pending:2, Total:10
+2025-10-20 14:29:23,909 - GUI.admin_window - INFO - Order 9876.1 stats: Complete - Pass:10, Fail:0, Pending:0, Total:10
+2025-10-20 14:29:24,588 - GUI.admin_window - INFO - Order 123451 stats: Active - Pass:7, Fail:1, Pending:2, Total:10
+2025-10-20 14:29:24,965 - GUI.admin_window - INFO - Order 9876.1 stats: Complete - Pass:10, Fail:0, Pending:0, Total:10
+2025-10-20 14:29:25,271 - GUI.admin_window - INFO - Order 123451 stats: Active - Pass:7, Fail:1, Pending:2, Total:10
+2025-10-20 14:29:25,588 - GUI.admin_window - INFO - Order 9876.1 stats: Complete - Pass:10, Fail:0, Pending:0, Total:10
+2025-10-20 14:29:26,068 - GUI.admin_window - INFO - Order 123451 stats: Active - Pass:7, Fail:1, Pending:2, Total:10
+2025-10-20 14:29:43,466 - GUI.admin_window - INFO - Board: SRU3 added with path P:/Label Tracking/ChampionX/SRU3
+2025-10-20 14:29:44,242 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 14:29:44,244 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 14:37:21,666 - GUI.admin_window - INFO - Order creation cancelled by user for order: 0000.0
+2025-10-20 14:37:31,162 - GUI.admin_window - INFO - Order creation cancelled by user for order: 0000.0
+2025-10-20 14:37:37,362 - GUI.admin_window - INFO - Order creation cancelled by user for order: 0000.0
+2025-10-20 14:37:58,675 - GUI.admin_window - INFO - Order creation cancelled by user for order: 0000.0
+2025-10-20 14:38:05,923 - GUI.admin_window - INFO - Order creation cancelled by user for order: 0000.0
+2025-10-20 14:38:22,190 - GUI.admin_window - INFO - Order 0000.0 created with 100 serial numbers using prefix: -

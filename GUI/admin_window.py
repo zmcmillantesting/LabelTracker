@@ -16,6 +16,8 @@ import openpyxl
 from datetime import datetime
 import os
 import GUI.styles as styles
+import tempfile
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +141,7 @@ class AdminWindow(QWidget):
         self.db_manager = db_manager
         self.xlsx_manager = xlsx_manager
         self.on_logout = on_logout
+        self.temp_preview_files = []
         
         self.setWindowTitle("Label Tracker - Admin")
         self.setMinimumSize(1200, 700)
@@ -1840,7 +1843,7 @@ class AdminWindow(QWidget):
             return None
 
     def view_selected_awaiting_file(self):
-        """Open the selected order's XLSX file"""
+        """Open the selected order's XLSX file (safe temporary copy for viewing)."""
         row = self.await_table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "No selection", "Please select an order first.")
@@ -1857,12 +1860,27 @@ class AdminWindow(QWidget):
 
             file_path = order[5]
 
-            if os.path.exists(file_path):
-                os.startfile(file_path)
-            else:
+            if not os.path.exists(file_path):
                 QMessageBox.warning(self, "File not found", f"File not found:\n{file_path}")
+                return
+
+            # --- NEW: create temporary copy so Excel won’t lock the real file ---
+            temp_dir = tempfile.gettempdir()
+            temp_copy_path = os.path.join(temp_dir, os.path.basename(file_path))
+            shutil.copy2(file_path, temp_copy_path)
+
+            # Optionally add suffix to clarify it's a copy
+            base, ext = os.path.splitext(temp_copy_path)
+            temp_copy_path = base + "_preview" + ext
+            shutil.copy2(file_path, temp_copy_path)
+
+            self.temp_preview_files.append(temp_copy_path)
+
+            # Open the temporary file
+            os.startfile(temp_copy_path)
+
         except Exception as e:
-            logger.error(f"Failed to open file: {e}")
+            logger.error(f"Failed to open file: {e}", exc_info=True)
             QMessageBox.warning(self, "Open Failed", f"Could not open file:\n{e}")
         
     def confirm_and_archive_selected(self):
@@ -2075,3 +2093,19 @@ class AdminWindow(QWidget):
             except Exception as e:
                 logger.error(f"Failed to delete user: {e}", exc_info=True)
                 QMessageBox.critical(self, "Error", f"Failed to delete user:\n{str(e)}")
+
+    def closeEvent(self, event):
+        """Clean up temporary preview files when the admin window closes."""
+        try:
+            for path in getattr(self, "temp_preview_files", []):
+                try:
+                    if os.path.exists(path):
+                        os.remove(path)
+                        logger.info(f"Deleted temp preview file: {path}")
+                except Exception as e:
+                    logger.warning(f"Could not delete temp file {path}: {e}")
+        except Exception as e:
+            logger.error(f"Error during temp file cleanup: {e}", exc_info=True)
+    
+        # Proceed with normal closing
+        super().closeEvent(event)

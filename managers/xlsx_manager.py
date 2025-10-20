@@ -1,4 +1,4 @@
-import os, logging
+import os, logging, tempfile, shutil
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 from datetime import datetime
@@ -135,6 +135,17 @@ class XLSXManager:
         self.db.add_order(order_number, company_id, board_id, file_path, created_by)
 
         return file_path, len(serials)
+
+    def load_preview(self, file_path):
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(file_path)
+        
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, os.path.basename(file_path))
+        shutil.copy2(file_path, temp_path)
+
+        wb = load_workbook(temp_path, read_only=True, data_only=True)
+        return wb
 
     def is_order_ready_for_confirmation(self, file_path: str) -> bool:
         """Return True if every data row in the XLSX file has a passing pass/fail value

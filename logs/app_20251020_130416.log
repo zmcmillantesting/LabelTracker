@@ -1,0 +1,67 @@
+2025-10-20 13:04:16,502 - utils.logger - INFO - Logging initialized. Log file: C:\Users\zmcmillan\projects\LabelTracker\logs\app_20251020_130416.log
+2025-10-20 13:04:16,502 - utils.logger - INFO - Starting Label Tracker Application...
+2025-10-20 13:04:16,520 - utils.logger - INFO - Database manager initialized
+2025-10-20 13:04:16,520 - utils.logger - INFO - XLSX manager initialized
+2025-10-20 13:04:16,535 - GUI.app - INFO - AppController initialized with backend managers
+2025-10-20 13:04:16,904 - GUI.app - INFO - Login window displayed
+2025-10-20 13:04:16,905 - utils.logger - INFO - Application controller started
+2025-10-20 13:04:16,905 - GUI.app - INFO - Starting application event loop
+2025-10-20 13:04:56,636 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-20 13:04:56,643 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-20 13:04:56,727 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:04:56,729 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:04:56,732 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-20 13:04:56,760 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-20 13:04:56,787 - GUI.app - INFO - Admin window displayed for admin
+2025-10-20 13:05:07,849 - GUI.admin_window - ERROR - Failed to populate archive table: too many values to unpack (expected 7)
+Traceback (most recent call last):
+  File "C:\Users\zmcmillan\projects\LabelTracker\GUI\admin_window.py", line 1568, in populate_archive_orders
+    for row_idx, (order_number, company_name, board_name, status, file_path, created_at, username) in enumerate(archived_orders):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: too many values to unpack (expected 7)
+2025-10-20 13:05:07,856 - GUI.admin_window - INFO - Loaded 2 orders
+2025-10-20 13:05:09,708 - GUI.admin_window - INFO - Order 1234.1 stats: Active - Pass:9, Fail:1, Pending:0, Total:10
+2025-10-20 13:05:18,685 - GUI.admin_window - WARNING - Could not delete temp file C:\Users\ZMCMIL~1\AppData\Local\Temp\1234.1_preview.xlsx: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\ZMCMIL~1\\AppData\\Local\\Temp\\1234.1_preview.xlsx'
+2025-10-20 13:05:18,706 - GUI.app - INFO - Login window displayed
+2025-10-20 13:05:28,117 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-20 13:05:28,122 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-20 13:05:28,182 - GUI.app - INFO - User window displayed for test
+2025-10-20 13:05:31,379 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-20 13:05:31,382 - GUI.standard_user_window - INFO - Order 1234.1 loaded successfully
+2025-10-20 13:05:36,169 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-1234.1-00001
+2025-10-20 13:05:49,136 - GUI.standard_user_window - WARNING - Order not found: 12345
+2025-10-20 13:05:52,440 - GUI.standard_user_window - WARNING - Order not found: 12345.1
+2025-10-20 13:05:57,099 - GUI.app - INFO - Login window displayed
+2025-10-20 13:06:10,816 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-20 13:06:10,822 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-20 13:06:10,881 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:06:10,882 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:06:10,884 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-20 13:06:10,909 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-20 13:06:10,924 - GUI.app - INFO - Admin window displayed for admin
+2025-10-20 13:06:15,571 - GUI.app - INFO - Login window displayed
+2025-10-20 13:06:23,369 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-20 13:06:23,374 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-20 13:06:23,419 - GUI.app - INFO - User window displayed for test
+2025-10-20 13:06:28,585 - GUI.standard_user_window - WARNING - Order not found: 12351
+2025-10-20 13:06:31,870 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-20 13:06:31,872 - GUI.standard_user_window - INFO - Order 123451 loaded successfully
+2025-10-20 13:06:36,220 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-123451-00002
+2025-10-20 13:06:40,755 - GUI.app - INFO - Login window displayed
+2025-10-20 13:06:48,974 - GUI.app - INFO - User admin (ID: 1) logged in as admin
+2025-10-20 13:06:48,980 - GUI.admin_window - INFO - Admin window initialized for user: admin
+2025-10-20 13:06:49,034 - GUI.admin_window - INFO - Company tree refreshed
+2025-10-20 13:06:49,036 - GUI.admin_window - INFO - Dropdowns refreshed
+2025-10-20 13:06:49,038 - GUI.admin_window - INFO - Loaded 2 users
+2025-10-20 13:06:49,063 - GUI.admin_window - INFO - Initial data loaded successfully
+2025-10-20 13:06:49,081 - GUI.app - INFO - Admin window displayed for admin
+2025-10-20 13:06:51,293 - GUI.admin_window - INFO - Order 123451 stats: Active - Pass:2, Fail:0, Pending:8, Total:10
+2025-10-20 13:06:56,103 - GUI.admin_window - WARNING - Could not delete temp file C:\Users\ZMCMIL~1\AppData\Local\Temp\123451_preview.xlsx: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\ZMCMIL~1\\AppData\\Local\\Temp\\123451_preview.xlsx'
+2025-10-20 13:06:56,122 - GUI.app - INFO - Login window displayed
+2025-10-20 13:06:59,161 - GUI.app - INFO - User test (ID: 2) logged in as user
+2025-10-20 13:06:59,167 - GUI.standard_user_window - INFO - User window initialized for: test
+2025-10-20 13:06:59,198 - GUI.app - INFO - User window displayed for test
+2025-10-20 13:07:03,639 - GUI.standard_user_window - INFO - Loaded 10 serial numbers from XLSX
+2025-10-20 13:07:03,641 - GUI.standard_user_window - INFO - Order 123451 loaded successfully
+2025-10-20 13:07:07,258 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-123451-00003
+2025-10-20 13:07:10,144 - GUI.standard_user_window - INFO - XLSX file updated for SN: QTX13504-123451-00004

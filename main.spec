@@ -12,6 +12,8 @@ a = Analysis(
     # Only include app code and required non-Python files if any
     datas=[],
     hiddenimports=[
+        'tempfile',
+        'shutil'
         'sqlite3', 
         'PyQt5', 
         'PyQt5.QtWidgets', 
