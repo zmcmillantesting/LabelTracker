@@ -1,11 +1,12 @@
 # app.py
 
-import sys
+import sys, os
 import logging
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget, QGraphicsOpacityEffect
 )
 from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, QTimer
+from PyQt5.QtGui import QIcon
 
 from GUI.login_window import LoginWindow
 from GUI.admin_window import AdminWindow
@@ -13,12 +14,20 @@ from GUI.standard_user_window import UserWindow
 
 logger = logging.getLogger(__name__)
 
+if getattr(sys, 'frozen', False):
+    base_path = sys._MEIPASS
+else:
+    base_path = os.path.abspath(".")
+
+icon_path = os.path.join(base_path, "GUI", "label_tracker_logo.ico")
+
 
 class AppController(QMainWindow):
     def __init__(self, db_manager, xlsx_manager):
         super().__init__()
 
         self.setWindowTitle("Label Tracker")
+        self.setWindowIcon(QIcon(base_path))
         self.resize(1000, 700)
 
         self.db_manager = db_manager
